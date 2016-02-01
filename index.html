@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>连连看</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <script src="jquery-1.8.0.min.js"></script>
+    <script src="zepto.min.js"></script>
+    <link rel="stylesheet" href="index.css"/>
+    <link rel="stylesheet" href="reset.css"/>
+    <script>
+        (function() {
+        function refreshRem() {
+            var width = docEl.getBoundingClientRect().width;
+            rem = width / (BASE_WIDTH / ROOT_FONT_SIZE);
+            docEl.style.fontSize = rem + "px";
+        }
+        var tid = null, docEl = document.documentElement, BASE_WIDTH = 640, ROOT_FONT_SIZE = 100;
+        refreshRem();
+         window.addEventListener("resize", function() {
+            clearTimeout(tid);
+            tid = setTimeout(refreshRem, 300);
+        }, false);
+    })();
+    </script>
+</head>
+<body>
+<div class="wrapper">
+    <div class="bg">
+        <canvas id="myCanvas"></canvas>
+    </div>
+</div>
+</body>
+<script >
+//适配手机
+    function pxToRem(pxValue){
+    var docEl = document.documentElement,
+        width = docEl.getBoundingClientRect().width,//当前页面宽度
+        baseWidth = 640,
+        rootFontSize = 100,//默认根字体大小
+        curFontSize = width / (baseWidth / rootFontSize),//当前页面根字体大小
+        remValue = pxValue / curFontSize;
+    return remValue;
+};
+h=pxToRem(document.documentElement.clientHeight);
+$('.wrapper').css('height',h+'rem');
+var width=document.documentElement.clientWidth;
+var height=document.documentElement.clientHeight;
+console.log(width,height);
+$('#myCanvas').attr({'width':width,'height':height});
+</script>
+<script src="index.js"></script>
+</html>

@@ -1,0 +1,15 @@
+@charset "utf-8";
+.wrapper{
+    width: 100%;
+    max-width:6.40rem;
+    margin:0 auto;
+    position: relative;
+    overflow: hidden;
+    .bg{
+        background:url(bg0.jpg) 0 0 no-repeat;
+        background-size:cover;
+        width: 6.4rem;
+        height: 11.38rem;
+
+    }
+}

@@ -1,0 +1,16 @@
+@charset "utf-8";
+/* line 2, index.scss */
+.wrapper {
+  width: 100%;
+  max-width: 6.40rem;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+/* line 8, index.scss */
+.wrapper .bg {
+  background: url(bg0.jpg) 0 0 no-repeat;
+  background-size: cover;
+  width: 6.4rem;
+  height: 11.38rem;
+}
