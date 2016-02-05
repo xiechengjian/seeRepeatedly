@@ -43,9 +43,10 @@
     return remValue;
 };
 h=pxToRem(document.documentElement.clientHeight);
-$('.wrapper').css('height',h+'rem');
+//$('.wrapper').css('height',h+'rem');
 var width=document.documentElement.clientWidth;
 var height=document.documentElement.clientHeight;
+$('.wrapper').css('height',height);
 console.log(width,height);
 $('#myCanvas').attr({'width':width,'height':height});
 </script>
