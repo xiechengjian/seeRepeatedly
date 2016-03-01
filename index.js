@@ -26,6 +26,8 @@ $.extend(Action.prototype, {
         clientHeight: 0,
         elementWidth: 85, //元素的宽高
         elementHeight: 105,
+        path:[],//路径
+        pathCorner:0,//路径转角
         sprite1: new Image(), //items，基本图
         sprite2: new Image(), //元素，特效图
         pathImage: new Image(),
@@ -67,12 +69,7 @@ $.extend(Action.prototype, {
         }
         self.initListener();
 
-        var startPoint=new Point(50,50);
-            point2=new Point(50,70);
-            point3=new Point(100,70);
-            endPoint=new Point(100,20);
-            path=new Path(startPoint,point2,point3,endPoint);
-            self.drawPath(ctx,path);
+        
     },
     initListener: function() {
         var self = this;
@@ -204,7 +201,8 @@ $.extend(Action.prototype, {
 
                 //}
                 var last=self.config.lastElement,now=self.config.nowElement;
-                if(last!=now&&last.mark!=-1&&now.mark!=-1){
+                //mark相同的element寻找是否可行路径
+                if(last!=now&&last.mark!=-1&&now.mark==last.mark){
                     self.findPath();
                 }
                 ePoint = new Point(eX, eY);
@@ -248,7 +246,7 @@ $.extend(Action.prototype, {
                 }
                 //console.log(binaryMap[i+1]);
             }
-            for(var i=0;i<9;i++)console.log(binaryMap[i]);
+            //for(var i=0;i<9;i++)console.log(binaryMap[i]);
 
             var start=new Point(now.binaryPoint.x+1,now.binaryPoint.y+1),
                 end=new Point(last.binaryPoint.x+1,last.binaryPoint.y+1),
@@ -257,144 +255,130 @@ $.extend(Action.prototype, {
                 last=start;
                 path.push(start);
                 visitMap[start.y][start.x]=1;
-                path=self.DFS(binaryMap,visitMap,corner,start,end,path,last);
-                for(var i in path) console.log(path[i]);
-            // array.push(start);
-            // while(array.length!=0){ //终止条件队列为空 
-            //     var temp=array.pop();
+            self.DFS(binaryMap,visitMap,corner,start,end,path,last);
+
+            var startX = self.config.elementStart.x,
+                startY = self.config.elementStart.y,
+                eHeight = self.config.elementHeight,
+                eWidth = self.config.elementWidth,
+                trans = self.config.rootSize,
+                path=self.config.path;
+            //path路径转换为Path,初始化Path路径
+            for(var i in path) {
+                console.log(path[i]);
+            }
+            console.log(">>>>>>>>>>>>>>>>>>");
+
+            if(path.length){
+                //temp存储转换为Path的路径2--4个点（路径点）
+                var start=path[0],temp=[];
+                //添加起点
+                var X=startX + (eWidth/2 * trans - 5) * path[0].x,
+                    Y=startY + (eHeight/2 * trans - 5) *path[0].y,
+                    startPoint=new Point(X,Y);
+                temp.push(startPoint);
+                //添加中间两个关键点
+                for(var i=1;i<path.length;i++){
+                    if(start.x!=path[i].x&&start.y!=path[i].y){
+                        var pointX=startX + (eWidth/2 * trans - 5) * path[i-1].x,
+                            pointY=startY + (eHeight/2 * trans - 5) * path[i-1].y,
+                            point=new Point(pointX,pointY);
+                        temp.push(point);
+                        start=path[i-1];
+                    }
+                }
+                //添加终点
+                var endX=startX + (eWidth/2 * trans - 5) * path[path.length-1].x,
+                    endY=startY + (eHeight/2 * trans - 5) *path[path.length-1].y,
+                    endPoint=new Point(endX,endY);
+                temp.push(endPoint);
+                self.drawPath(ctx,temp);
+            }
+            
+            
+
                 
-            //     //是最后一个点结束
-            //     if(temp==end && )
-            //     //右边
-            //     if(temp.x+1<8&& !binaryMap[temp.x+1][temp.y]){
-            //         point=new Point(temp.x+1,temp.y);
-            //         array.push(point);
-            //     }
-            // }
+           
+            
 
     },
     //DFS算法
     //参数说明：
-    //扩展的数组，访问标记数组，拐角（最大为2），起始点，结束点，路径保存数组，上一个点（判断是否为拐角）
+    //扩展的数组，访问标记数组，拐角（最大为2），起始点，结束点，路径保存数组，上一个非直线点（判断是否为拐角）
     DFS:function(binaryMap,visitMap,corner,start,end,path,last){
+        //
         var self=this,l=last,c=corner;
-        //返回条件
-        if(start==end||!corner) return path ;
-        var x=start.x,y=start.y;
-        //先遍历右边的点，没有被访问过，不超过边界，没有其他元素
-        if(!visitMap[y][x+1]&&x+1<8&&!binaryMap[y][x+1]){
-           
-            var newStart=new Point(x+1,y);
-            if(last.x!=x+1&&last.y!=y){//不在在同一直线上，有拐角coner自减
-                corner--;
-                last=newStart;
-            }
-            //还有拐角
-            if(corner){
-                
-                visitMap[y][x+1]=1;
-                path.push(newStart);
-                
-                //递归
-                self.DFS(binaryMap,visitMap,corner,newStart,end,path,last);
-                visitMap[y][x+1]=0;
-                
-                path.pop();
-                last=l;
-                corner=c;
-
-            }else{
-                return;
-            }
-            //恢复递归前的状态
-            
+        var length;
+        if(!self.config.path.length){
+            length=Infinity;
+        }else{
+            length=self.config.path.length;
         }
-
-        //遍历下边的点
-        if(!visitMap[y+1][x]&&y+1<9&&!binaryMap[y+1][x]){
-           
-            var newStart=new Point(x,y+1);
-            if(last.x!=x&&last.y!=y+1){//不在在同一直线上，有拐角coner自减
-                corner--;
-                last=newStart;
-            }
-            //还有拐角
-            if(corner){
-                
-                 visitMap[y+1][x]=1;
-                path.push(newStart);
-                
-                //递归
-                self.DFS(binaryMap,visitMap,corner,newStart,end,path,last);
-                visitMap[y+1][x]=0;
-                path.pop();
-                last=l;
-                corner=c;
-
-            }else{
-                return;
-            }
-            //恢复递归前的状态
-            
+        //返回条件，正在寻找的路径大于当前最短路径
+        if(start==end||!corner||path.length>length) {
+            return;
         }
-
-        //遍历左边的点
-        if(!visitMap[y][x-1]&&x-1>=0 &&!binaryMap[y][x-1]){
-           
-            var newStart=new Point(x-1,y);
-            if(last.x!=x-1&&last.y!=y){//不在在同一直线上，有拐角coner自减
-                corner--;
-                last=newStart;
+        var right=new Point(1,0),
+            bottom=new Point(0,1),
+            left=new Point(-1,0),
+            top=new Point(0,-1),
+            ary=[right,bottom,left,top];
+            //一次遍历右，下，左，上四个点
+            for(var i in ary){
+                var x=start.x+ary[i].x,
+                    y=start.y+ary[i].y;
+                //不超过边界，没有被访问过
+                if(x<8&&x>0&&y<9&&y>0&&!visitMap[y][x]){
+                    var newStart=new Point(x,y),newX=newStart.x,newY=newStart.y;
+                    //不在在同一直线上，有拐角coner自减
+                    if(last.x!=newX&&last.y!=newY){
+                        corner=c-1;
+                        last=newStart;
+                    }
+                    //还有拐角
+                    if(corner>=0){
+                        if(!binaryMap[newY][newX]){//右边没有其他元素，可行点标记，保存并递归
+                            visitMap[newY][newX]=1;
+                            path.push(newStart);
+                            //递归
+                            self.DFS(binaryMap,visitMap,corner,newStart,end,path,last);
+                            //还原递归前状态
+                            visitMap[newY][newX]=0;
+                            path.pop();
+                            last=l;
+                            corner=c;
+                        }else if(newStart.x==end.x&&newStart.y==end.y){//该点是终点，找到路径，选择最小路径
+                            visitMap[newY][newX]=1;
+                            path.push(newStart);
+                            //for(var i in path) console.log(path[i]);
+                            var length;
+                            //选取路径最短且转角最少的路径
+                            if(!self.config.path.length){
+                                self.config.path=path.slice(0,path.length);
+                                self.config.pathCorner=corner;
+                            }else{
+                                length=self.config.path.length;
+                                if(length>path.length){
+                                    self.config.path=path.slice(0,path.length);
+                                    self.config.pathCorner=corner;
+                                }else if(length==path.length&&corner<self.config.pathCorner){
+                                    self.config.path=path.slice(0,path.length);
+                                    self.config.pathCorner=corner;
+                                }
+                            }
+                            //还原递归前状态
+                            visitMap[newY][newX]=0;
+                            path.pop();
+                            last=l;
+                            corner=c;
+                            return;
+                        }
+                    }
+                    last=l;
+                    corner=c;
             }
-            //还有拐角
-            if(corner){
-                
-                 visitMap[y][x-1]=1;
-                path.push(newStart);
-                
-                //递归
-                self.DFS(binaryMap,visitMap,corner,newStart,end,path,last);
-                visitMap[y][x-1]=0;
-                path.pop();
-                last=l;
-                corner=c;
-
-            }else{
-                return;
-            }
-            //恢复递归前的状态
-            
         }
-
-        //遍历上边的点
-        if(!visitMap[y-1][x]&&y-1>=0&&!binaryMap[y-1][x]){
-           
-            var newStart=new Point(x,y-1);
-            if(last.x!=x&&last.y!=y-1){//不在在同一直线上，有拐角coner自减
-                corner--;
-                last=newStart;
-            }
-            //还有拐角
-            if(corner){
-                
-                visitMap[y-1][x]=1;
-                path.push(newStart);
-                
-                //递归
-                self.DFS(binaryMap,visitMap,corner,newStart,end,path,last);
-                visitMap[y-1][x]=0;
-                path.pop();
-                last=l;
-                corner=c;
-
-            }else{
-                return;
-            }
-            //恢复递归前的状态
-            
-            
-        }
-        return path;
+        return ;
     },
     drawPath: function(ctx,path) {
         var self = this;
@@ -404,34 +388,33 @@ $.extend(Action.prototype, {
             sprite1 = self.config.sprite1,
             trans = self.config.rootSize,
             pathFlash = self.config.pathFlash,
+            startX = self.config.elementStart.x,
+            startY = self.config.elementStart.y,
             pathImage = self.config.pathImage;
+            
 
-
-
-        //ctx.drawImage(pathFlash,0,0,110,79,0,0,110*trans*.4,79*trans*.4);
-        //ctx.drawImage(pathFlash,0,0,110,79,110*trans*.4,0,110*trans*.4,79*trans*.4);
-        // var time=0;
-        // while(time<10){
-        //     ctx.drawImage(pathFlash,0,0,128,128,128*trans*.6*time,8,128*trans*.6,128*trans*.6);
-        //     time++;
-        // }
         var texture = ctx.createPattern(pathImage, "repeat");
         ctx.strokeStyle = texture;
-
-        if(path.startPoint==-1||path.endPoint==-1){ return; }
-        else{
-            ctx.beginPath();
-            ctx.moveTo(path.startPoint.x,path.startPoint.y);
-            if(path.point2!=-1){
-                ctx.lineTo(path.point2.x,path.point2.y);
-            }
-            if(path.point3!=-1){
-                ctx.lineTo(path.point3.x,path.point3.y);
-            }
-            ctx.lineTo(path.endPoint.x,path.endPoint.y);
-            //ctx.lineWidth = 3;
-            ctx.stroke();
-        }    
+        ctx.beginPath();
+        ctx.moveTo(path[0].x,path[0].y);
+        for(var i in path){
+            ctx.lineTo(path[i].x,path[i].y);
+        }
+        ctx.stroke();
+        // if(path.startPoint==-1||path.endPoint==-1){ return; }
+        // else{
+        //     ctx.beginPath();
+        //     ctx.moveTo(path.startPoint.x,path.startPoint.y);
+        //     if(path.point2!=-1){
+        //         ctx.lineTo(path.point2.x,path.point2.y);
+        //     }
+        //     if(path.point3!=-1){
+        //         ctx.lineTo(path.point3.x,path.point3.y);
+        //     }
+        //     ctx.lineTo(path.endPoint.x,path.endPoint.y);
+        //     //ctx.lineWidth = 3;
+        //     ctx.stroke();
+        // }    
     },
     drwaBoom: function(ctx, ePoint) {
         var self = this;
