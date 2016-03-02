@@ -33,6 +33,7 @@ $.extend(Action.prototype, {
         pathImage: new Image(),
         pathFlash: new Image(), //路径特效图
         boom: new Image(), //绘制爆炸
+        start:false,
         binaryMap: [
             [7, 2, 6, 3, 5, 1], //二进制地图6*7
             [0, 0, 0, 0, 0, 6],
@@ -68,7 +69,6 @@ $.extend(Action.prototype, {
             self.config.elementMap = self.initMap(ctx);
         }
         self.initListener();
-
         
     },
     initListener: function() {
@@ -91,9 +91,13 @@ $.extend(Action.prototype, {
             startY = self.config.elementStart.y,
             eHeight = self.config.elementHeight,
             eWidth = self.config.elementWidth,
+            clientHeight=self.config.clientHeight,
+            clientWidth=self.config.clientWidth,
             trans = self.config.rootSize;
-        //self.drawElement(ctx, startP, iPoint);
-
+        //清屏
+        ctx.clearRect(0,startY,clientWidth,clientHeight);
+        self.config.lastElement=new Element();
+        self.config.nowElement=new Element();
         for (var i = 0; i < 7; i++) {
             for (var j = 0; j < 6; j++) {
                 if (bMap[i][j]) {
@@ -109,6 +113,7 @@ $.extend(Action.prototype, {
             }
         }
         //self.findPath();
+        self.config.start=true;
         return eMap;
     },
     //画连连看基本元素
@@ -121,9 +126,13 @@ $.extend(Action.prototype, {
             trans = self.config.rootSize;
         ctx.clearRect(ePoint.x, ePoint.y, eWidth * trans, eHeight * trans);
         ctx.drawImage(sprite2, 7, 7, eWidth, eHeight, ePoint.x, ePoint.y, eWidth * trans, eHeight * trans);
-        setTimeout(function() {
+        if(!self.config.start){
+            setTimeout(function() {
             self.elementSreversal(ctx, ePoint, iPoint);
-        }, 300);
+            }, 300);
+        }else{
+            ctx.drawImage(sprite1, iPoint.x, iPoint.y, 70, 70, ePoint.x, ePoint.y + 2, 70 * trans, 70 * trans);
+        }
     },
     //元素翻转动画
     elementSreversal: function(ctx, ePoint, iPoint) {
@@ -202,11 +211,26 @@ $.extend(Action.prototype, {
                 //}
                 var last=self.config.lastElement,now=self.config.nowElement;
                 //mark相同的element寻找是否可行路径
+                self.config.path.length=0;
                 if(last!=now&&last.mark!=-1&&now.mark==last.mark){
-                    self.findPath();
+                    if(self.findPath(ctx)){//是可行的元素绘制路线
+                        
+                        var last=self.config.lastElement,
+                        now=self.config.nowElement;
+                        self.config.binaryMap[last.binaryPoint.y][last.binaryPoint.x]=0;
+                        self.config.binaryMap[now.binaryPoint.y][now.binaryPoint.x]=0;
+                        //setTimeout(function() {
+                        //}, 300);
+                        //绘制爆炸
+                        setTimeout(function(){
+                            self.drwaBoom(ctx,last.ePoint,now.ePoint);
+                        },400);
+                         
+
+                    }
                 }
                 ePoint = new Point(eX, eY);
-                //self.drwaBoom(ctx,ePoint);
+                //
                 return;
             }
         }
@@ -214,7 +238,7 @@ $.extend(Action.prototype, {
 
     },
     //寻找路径函数DFS算法
-    findPath:function(){
+    findPath:function(ctx){
         var self=this;
         var last=self.config.lastElement,
             now=self.config.nowElement,
@@ -273,26 +297,36 @@ $.extend(Action.prototype, {
                 //temp存储转换为Path的路径2--4个点（路径点）
                 var start=path[0],temp=[];
                 //添加起点
-                var X=startX + (eWidth/2 * trans - 5) * path[0].x,
-                    Y=startY + (eHeight/2 * trans - 5) *path[0].y,
+                var X=startX + (eWidth * trans - 5) * path[0].x-eWidth*trans/2,
+                    Y=startY + (eHeight * trans - 5) *path[0].y-eHeight*trans/2,
                     startPoint=new Point(X,Y);
                 temp.push(startPoint);
                 //添加中间两个关键点
                 for(var i=1;i<path.length;i++){
                     if(start.x!=path[i].x&&start.y!=path[i].y){
-                        var pointX=startX + (eWidth/2 * trans - 5) * path[i-1].x,
-                            pointY=startY + (eHeight/2 * trans - 5) * path[i-1].y,
+                        var pointX=startX + (eWidth * trans - 5) * path[i-1].x-eWidth*trans/2,
+                            pointY=startY + (eHeight * trans - 5) * path[i-1].y-eHeight*trans/2,
                             point=new Point(pointX,pointY);
                         temp.push(point);
                         start=path[i-1];
                     }
                 }
                 //添加终点
-                var endX=startX + (eWidth/2 * trans - 5) * path[path.length-1].x,
-                    endY=startY + (eHeight/2 * trans - 5) *path[path.length-1].y,
+                var endX=startX + (eWidth * trans - 5) * path[path.length-1].x-eWidth*trans/2,
+                    endY=startY + (eHeight * trans - 5) *path[path.length-1].y-eHeight*trans/2,
                     endPoint=new Point(endX,endY);
                 temp.push(endPoint);
+                //绘制路径
                 self.drawPath(ctx,temp);
+                setTimeout(function(){
+                    self.initMap(ctx);
+                },300);
+                
+                return true;
+                //清除元素并重新绘制
+                
+            }else{
+                return false;
             }
             
             
@@ -328,7 +362,7 @@ $.extend(Action.prototype, {
                 var x=start.x+ary[i].x,
                     y=start.y+ary[i].y;
                 //不超过边界，没有被访问过
-                if(x<8&&x>0&&y<9&&y>0&&!visitMap[y][x]){
+                if(x<8&&x>=0&&y<9&&y>=0&&!visitMap[y][x]){
                     var newStart=new Point(x,y),newX=newStart.x,newY=newStart.y;
                     //不在在同一直线上，有拐角coner自减
                     if(last.x!=newX&&last.y!=newY){
@@ -393,13 +427,15 @@ $.extend(Action.prototype, {
             pathImage = self.config.pathImage;
             
 
-        var texture = ctx.createPattern(pathImage, "repeat");
-        ctx.strokeStyle = texture;
+        // var texture = ctx.createPattern(pathImage, "repeat");
+        // ctx.strokeStyle = texture;
+        ctx.strokeStyle="#6ba1d6";
         ctx.beginPath();
         ctx.moveTo(path[0].x,path[0].y);
         for(var i in path){
             ctx.lineTo(path[i].x,path[i].y);
         }
+        ctx.lineWidth = 3;
         ctx.stroke();
         // if(path.startPoint==-1||path.endPoint==-1){ return; }
         // else{
@@ -416,18 +452,32 @@ $.extend(Action.prototype, {
         //     ctx.stroke();
         // }    
     },
-    drwaBoom: function(ctx, ePoint) {
+    drwaBoom: function(ctx, lastPoint,nowPoint) {
         var self = this;
         var eHeight = self.config.elementHeight,
             eWidth = self.config.elementWidth,
             boom = self.config.boom,
             trans = self.config.rootSize;
+        $($(".boom")[0]).css({"top":+lastPoint.y+"px","left":+lastPoint.x+"px"});
+        $($(".boom")[1]).css({"top":+nowPoint.y+"px","left":+nowPoint.x+"px"});
+        //$(".boom").css("top","20px");
+        $(".boom").removeClass("hide");
+        setTimeout(function(){
+            $(".boom2").addClass("boom2-move");
+            $(".boom1").addClass("boom1-move");
+        },50);
+        setTimeout(function(){
+            $(".boom").addClass("hide");
+            $(".boom2").removeClass("boom2-move");
+            $(".boom1").removeClass("boom1-move");
+        },300)
         //ctx.clearRect(ePoint.x,ePoint.y,);
-        setTimeout(function() {
+        //setTimeout(function() {
             //ctx.scale(.7,.7);
-            ctx.clearRect(ePoint.x, ePoint.y, eWidth * trans - 5, eHeight * trans - 5);
-            //ctx.drawImage(boom,0,120,125,135,ePoint.x,ePoint.y,125*trans,125*trans);
-        }, 250);
+            //ctx.clearRect(ePoint.x, ePoint.y, eWidth * trans - 5, eHeight * trans - 5);
+             //ctx.drawImage(boom,160,15,eWidth,eHeight,ePoint.x+eWidth*trans/4,ePoint.y+eHeight*trans/4,eWidth*trans/2,eHeight*trans/2);
+            // ctx.drawImage(boom,160,15,eWidth,eHeight,ePoint.x+eWidth*trans/4,ePoint.y+eHeight*trans/4,eWidth*trans/2,eHeight*trans/2);
+       // }, 250);
         // setTimeout(function(){
         //     ctx.clearRect(ePoint.x,ePoint.y,);
         //     ctx.scale(10/7,10/7);

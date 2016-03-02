@@ -5,11 +5,54 @@
     margin:0 auto;
     position: relative;
     overflow: hidden;
+    .hide{
+        display: none;
+    }
     .bg{
         background:url(bg0.jpg) 0 0 no-repeat;
         background-size:cover;
         width: 6.4rem;
         height: 11.38rem;
+        .boom{
+            width: 1.25rem;
+            height: 1.35rem;
+            position: absolute;
+            left: 2rem;
+            top: 3rem;
+            .boom1{
+                width: .85rem;
+                height: 1.05rem;
+                // left: .2rem;
+                // top: .2rem;
+                position: absolute;
+                background:  url(boom.png) no-repeat;
+                background-size: 2.56rem 2.56rem;
+                background-position: -1.55rem -.15rem;
+                -webkit-transform:scale(0.7);
+                -webkit-transition:.2s ease;
+            }
+            .boom2{
+                position: absolute;
+                width: 1.15rem;
+                height: 1.35rem;
+                background:  url(boom.png) no-repeat;
+                background-size: 2.56rem 2.56rem;
+                background-position: -1.35rem -1.15rem;
+                -webkit-transform:scale(0.5);
+                opacity: 0;
+                left: -.2rem;
+                top: -.15rem;
+                -webkit-transform-origin: center center;
+                -webkit-transition:.2s ease;
+            }
+            .boom1-move{
+            -webkit-transform:scale(0);
+            }
+            .boom2-move{
+               -webkit-transform:scale(.7);
+               opacity: 1;
+            }
+        }
 
     }
 }
