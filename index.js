@@ -66,7 +66,7 @@ $.extend(Action.prototype, {
         self.config.boom.src = "boom.png";
         var trans = self.config.rootSize;
         self.config.sprite2.onload = function() {
-            self.config.elementMap = self.initMap(ctx);
+            self.initMap(ctx);
         }
         self.initListener();
         
@@ -85,7 +85,7 @@ $.extend(Action.prototype, {
     initMap: function(ctx) {
         var self = this;
         var bMap = self.config.binaryMap, //二进制地图
-            eMap = self.config.elementMap, //元素地图
+            eMap = [], //元素地图
             startP = self.config.elementStart,
             startX = self.config.elementStart.x,
             startY = self.config.elementStart.y,
@@ -114,6 +114,8 @@ $.extend(Action.prototype, {
         }
         //self.findPath();
         self.config.start=true;
+        self.config.elementMap.length=0;
+        self.config.elementMap=eMap;
         return eMap;
     },
     //画连连看基本元素
@@ -221,10 +223,13 @@ $.extend(Action.prototype, {
                         self.config.binaryMap[now.binaryPoint.y][now.binaryPoint.x]=0;
                         //setTimeout(function() {
                         //}, 300);
+                        setTimeout(function(){
+                            self.initMap(ctx);
+                        },50);
                         //绘制爆炸
                         setTimeout(function(){
                             self.drwaBoom(ctx,last.ePoint,now.ePoint);
-                        },400);
+                        },100);
                          
 
                     }
@@ -318,9 +323,7 @@ $.extend(Action.prototype, {
                 temp.push(endPoint);
                 //绘制路径
                 self.drawPath(ctx,temp);
-                setTimeout(function(){
-                    self.initMap(ctx);
-                },300);
+                
                 
                 return true;
                 //清除元素并重新绘制
