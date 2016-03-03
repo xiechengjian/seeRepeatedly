@@ -70,7 +70,7 @@ $.extend(Action.prototype, {
         //界面监听
         self.initListener();
         self.config.sprite2.onload = function() {
-            //self.initMap(ctx);
+            self.initMap(ctx);
         }
         
         
@@ -111,6 +111,11 @@ $.extend(Action.prototype, {
         $("#myCanvas").on('touchstart', function(e) {
             e.preventDefault();
             self.canvasTouch(ctx, e, self);
+            // x = e.originalEvent.touches[0].clientX,
+            // y = e.originalEvent.touches[0].clientY;
+            // var ePoint1=new Point(x,y);
+            // var ePoint2=new Point(50,50);
+            // self.drwaBoom(ctx,ePoint1,ePoint2);
         });
     },
     //元素地图初始化
@@ -325,10 +330,10 @@ $.extend(Action.prototype, {
                 trans = self.config.rootSize,
                 path=self.config.path;
             //path路径转换为Path,初始化Path路径
-            for(var i in path) {
-                console.log(path[i]);
-            }
-            console.log(">>>>>>>>>>>>>>>>>>");
+            // for(var i in path) {
+            //     console.log(path[i]);
+            // }
+            // console.log(">>>>>>>>>>>>>>>>>>");
 
             if(path.length){
                 //temp存储转换为Path的路径2--4个点（路径点）
