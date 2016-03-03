@@ -58,22 +58,54 @@ $.extend(Action.prototype, {
         self.config.rootSize = parseFloat($('html').css('font-size')) / 100;
         self.config.clientWidth = document.documentElement.clientWidth;
         self.config.clientHeight = document.documentElement.clientHeight;
+        $(".home-page").css('height',self.config.clientHeight+'px');
+        $(".game-mode").css('height',self.config.clientHeight+'px');
         var canvas = document.getElementById('myCanvas');
         var ctx = canvas.getContext('2d');
-        self.config.sprite1.src = "sprite1.png";
-        self.config.sprite2.src = "sprite2.png";
-        self.config.pathImage.src = "path.png";
-        self.config.boom.src = "boom.png";
+        self.config.sprite1.src = "images/sprite1.png";
+        self.config.sprite2.src = "images/sprite2.png";
+        self.config.pathImage.src = "images/path.png";
+        self.config.boom.src = "images/boom.png";
         var trans = self.config.rootSize;
-        self.config.sprite2.onload = function() {
-            self.initMap(ctx);
-        }
+        //界面监听
         self.initListener();
+        self.config.sprite2.onload = function() {
+            //self.initMap(ctx);
+        }
+        
         
     },
+    //界面监听初始化
     initListener: function() {
         var self = this;
         var canvas = document.getElementById('myCanvas');
+        //首页监听事件，点击进入模式选择
+        $(".home-page").on('click',function(e){
+            e.preventDefault();
+            $(".home-page").addClass("hide");
+            $(".game-mode").removeClass("hide");
+        });
+        //模式选择监听事件，选择两种模式
+        //经典模式
+        $(".jindian-mode").on('click',function(e){
+            e.preventDefault();
+            $(".game-mode").addClass("hide");
+            $(".gameBg").removeClass("hide");
+            self.initMap(ctx);
+        });
+        //首页眼睛眨的动画
+        var timer=setInterval(function(){
+             $(".boy").addClass("boy-move");
+             $(".girl").addClass("boy-move");
+             setTimeout(function(){
+                $(".boy").removeClass("boy-move");
+                $(".girl").removeClass("boy-move");
+             },250);
+             //取消动画
+             if($(".home-page").hasClass("hide")){
+                clearInterval(timer);
+             }
+        },3000);
         ctx = canvas.getContext('2d');
         //canvas.addEventListener('touchstart',self.canvasTouch,false);
         $("#myCanvas").on('touchstart', function(e) {

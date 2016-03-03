@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <title>连连看</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <script src="jquery-1.8.0.min.js"></script>
-    <script src="zepto.min.js"></script>
-    <link rel="stylesheet" href="index.css"/>
-    <link rel="stylesheet" href="reset.css"/>
+    <script src="js/jquery-1.8.0.min.js"></script>
+    <script src="js/zepto.min.js"></script>
+    <link rel="stylesheet" href="css/index.css"/>
+    <link rel="stylesheet" href="css/reset.css"/>
     <script>
         (function() {
         function refreshRem() {
@@ -26,7 +26,24 @@
 </head>
 <body>
 <div class="wrapper">
-    <div class="bg">
+    <div class="home-page ">
+        <div class="people">
+            <div class="boy"></div>
+            <div class="girl"></div>
+        </div>
+        <div class="devil"></div>
+        <div class="title"></div>
+        <div class="ball1"></div>
+        <div class="ball2"></div>
+        <div class="enter"></div>
+    </div>
+    <div class="game-mode hide">
+        <div class="bg"></div>
+        <div class="jindian-mode"><div class="common1"></div><div class="stars"></div></div>
+        <div class="shandian-mode"></div>
+        <div class="grass"></div>    
+    </div>
+    <div class="gameBg hide">
         <canvas id="myCanvas"></canvas>
         <div class="boom hide">
             <div class="boom1"></div>
@@ -58,5 +75,5 @@ $('.wrapper').css('height',height);
 console.log(width,height);
 $('#myCanvas').attr({'width':width,'height':height});
 </script>
-<script src="index.js"></script>
+<script src="js/index.js"></script>
 </html>
