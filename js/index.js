@@ -68,9 +68,10 @@ $.extend(Action.prototype, {
         self.config.boom.src = "images/boom.png";
         var trans = self.config.rootSize;
         //界面监听
-        self.initListener();
+        
         self.config.sprite2.onload = function() {
-            self.initMap(ctx);
+            //self.initMap(ctx);
+            self.initListener();
         }
         
         

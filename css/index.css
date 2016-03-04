@@ -120,17 +120,6 @@
       left: .1rem;
       -webkit-transform: scale(0.7);
       z-index: 150; }
-      .wrapper .game-mode .jindian-mode .common1 {
-        width: 2.6rem;
-        height: .6rem;
-        position: absolute;
-        background: url(../images/common1.png) no-repeat;
-        background-size: 4.04rem 1.21rem;
-        background-position: -.1rem 0rem;
-        -webkit-transform: scale(0);
-        opacity: 0;
-        left: .2rem;
-        top: .18rem; }
       .wrapper .game-mode .jindian-mode .stars {
         width: .54rem;
         height: .54rem;
@@ -155,6 +144,15 @@
       -webkit-transform: scale(0.7);
       -webkit-animation: jindian 2s ease infinite;
       z-index: 150; }
+      .wrapper .game-mode .shandian-mode .common {
+        width: .95rem;
+        height: .95rem;
+        position: absolute;
+        background: url(../images/common1.png) no-repeat;
+        background-size: 4.04rem 1.21rem;
+        background-position: -2.85rem 0rem;
+        -webkit-transform: scale(0.7);
+        -webkit-animation: enter 2s ease infinite; }
     .wrapper .game-mode .grass {
       width: 6.40rem;
       height: 1.78rem;
