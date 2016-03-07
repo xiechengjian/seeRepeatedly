@@ -30,9 +30,26 @@ $.extend(Action.prototype, {
         pathCorner:0,//路径转角
         sprite1: new Image(), //items，基本图
         sprite2: new Image(), //元素，特效图
+        sprite3:new Image(),//数字图
         pathImage: new Image(),
         pathFlash: new Image(), //路径特效图
         boom: new Image(), //绘制爆炸
+        combo:0,//连击
+        validTime:2000,//combo有效时间500ms
+        timer:0,//setTimeout,时间种子
+        score:0,//计分
+        gameTime:60,//总的计时默认60s
+        bgm1:new Audio(),//开场音乐
+        bgm2:new Audio(),//游戏主场景音乐
+        eliminate1:new Audio(),//爆炸的8种音效
+        eliminate2:new Audio(),
+        eliminate3:new Audio(),
+        eliminate4:new Audio(),
+        eliminate5:new Audio(),
+        eliminate6:new Audio(),
+        eliminate7:new Audio(),
+        eliminate8:new Audio(),
+        drop:new Audio(),//点击音效
         start:false,
         binaryMap: [
             [7, 2, 6, 3, 5, 1], //二进制地图6*7
@@ -62,13 +79,25 @@ $.extend(Action.prototype, {
         $(".game-mode").css('height',self.config.clientHeight+'px');
         var canvas = document.getElementById('myCanvas');
         var ctx = canvas.getContext('2d');
+        //资源初始化
         self.config.sprite1.src = "images/sprite1.png";
         self.config.sprite2.src = "images/sprite2.png";
+        self.config.sprite3.src = "images/sprite3.png";
         self.config.pathImage.src = "images/path.png";
         self.config.boom.src = "images/boom.png";
+        self.config.eliminate1.src="music/eliminate1.mp3";
+        self.config.eliminate2.src="music/eliminate2.mp3";
+        self.config.eliminate3.src="music/eliminate3.mp3";
+        self.config.eliminate4.src="music/eliminate4.mp3";
+        self.config.eliminate5.src="music/eliminate5.mp3";
+        self.config.eliminate6.src="music/eliminate6.mp3";
+        self.config.eliminate7.src="music/eliminate7.mp3";
+        self.config.eliminate8.src="music/eliminate8.mp3";
+        self.config.bgm1.src="music/bgm1.mp3";
+        self.config.bgm2.src="music/bgm2.mp3";
+        self.config.drop.src="music/drop.mp3";
         var trans = self.config.rootSize;
         //界面监听
-        
         self.config.sprite2.onload = function() {
             //self.initMap(ctx);
             self.initListener();
@@ -80,8 +109,10 @@ $.extend(Action.prototype, {
     initListener: function() {
         var self = this;
         var canvas = document.getElementById('myCanvas');
+        self.config.bgm1.play();
         //首页监听事件，点击进入模式选择
         $(".home-page").on('click',function(e){
+            self.config.bgm1.pause();
             e.preventDefault();
             $(".home-page").addClass("hide");
             $(".game-mode").removeClass("hide");
@@ -92,7 +123,11 @@ $.extend(Action.prototype, {
             e.preventDefault();
             $(".game-mode").addClass("hide");
             $(".gameBg").removeClass("hide");
+            //self.config.bgm2.play();
             self.initMap(ctx);
+            var time=self.config.gameTime,
+                trans=self.config.rootSize;
+            self.drawTime(ctx,time,trans);
         });
         //首页眼睛眨的动画
         var timer=setInterval(function(){
@@ -133,7 +168,7 @@ $.extend(Action.prototype, {
             clientWidth=self.config.clientWidth,
             trans = self.config.rootSize;
         //清屏
-        ctx.clearRect(0,startY,clientWidth,clientHeight);
+        ctx.clearRect(0,startY,clientWidth,clientHeight-180);
         self.config.lastElement=new Element();
         self.config.nowElement=new Element();
         for (var i = 0; i < 7; i++) {
@@ -151,6 +186,10 @@ $.extend(Action.prototype, {
             }
         }
         //self.findPath();
+        //self.drawCombo(ctx,5,trans);
+        // setTimeout(function(){
+        //     self.drawCombo(ctx,0,trans);
+        // },100);
         self.config.start=true;
         self.config.elementMap.length=0;
         self.config.elementMap=eMap;
@@ -229,6 +268,9 @@ $.extend(Action.prototype, {
             var last = self.config.lastElement,
                 now = self.config.nowElement;
             if (x > eX && x < eX + eWidth * trans && y > eY && y < eY + eHeight * trans) {
+                if(now.mark==-1){
+                    self.config.drop.play();
+                }
                 if (eMap[i] == last || eMap[i] == now) return;
                 //清除上一个element，并重绘
                 if (last.mark != -1 && last != eMap[i] && now != eMap[i] && last != now) {
@@ -254,23 +296,55 @@ $.extend(Action.prototype, {
                 self.config.path.length=0;
                 if(last!=now&&last.mark!=-1&&now.mark==last.mark){
                     if(self.findPath(ctx)){//是可行的元素绘制路线
-                        
                         var last=self.config.lastElement,
                         now=self.config.nowElement;
                         self.config.binaryMap[last.binaryPoint.y][last.binaryPoint.x]=0;
                         self.config.binaryMap[now.binaryPoint.y][now.binaryPoint.x]=0;
-                        //setTimeout(function() {
-                        //}, 300);
+                        //有效时间内连击
+                        var validTime=self.config.validTime,
+                            score=self.config.score,
+                            combo=self.config.combo;
+                        //8连击后清除连击，弹出一个perfect界面
+                        if(combo>=8){
+                            self.config.combo=0;
+                            var clientHeight=self.config.clientHeight,
+                            clientWidth=self.config.clientWidth,
+                            y=15,//comob位置
+                            x=clientWidth-150;
+                            ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
+                        }else{
+                            self.config.combo++;
+                        }
+                        //绘制combo
+                        self.drawCombo(ctx,self.config.combo,trans);
+                        //计分！！统计
+                        var comboScore=0;
+                        if(combo){
+                            comboScore=(self.config.combo-1)*150;
+                        }
+                        score=score+100+comboScore;
+                        self.config.score=score;
+                        self.drawScore(ctx,score,trans);
+                        
                         setTimeout(function(){
                             self.initMap(ctx);
                         },50);
                         //绘制爆炸
                         setTimeout(function(){
-                            self.drwaBoom(ctx,last.ePoint,now.ePoint);
+                        self.drwaBoom(ctx,last.ePoint,now.ePoint);
                         },100);
-                         
-
+                    }else{//没有可行路线，清空连击
+                        self.config.combo=0;//连击清空
+                        clearTimeout(self.config.timer);
                     }
+                }else if(now.mark!=last.mark&&last.mark!=-1){//两个元素不一样
+                    self.config.combo=0;                    //连击清空
+                    clearTimeout(self.config.timer);        
+                var clientHeight=self.config.clientHeight,
+                    clientWidth=self.config.clientWidth,
+                    y=15,//comob位置
+                    x=clientWidth-150;
+                    ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
                 }
                 ePoint = new Point(eX, eY);
                 //
@@ -369,13 +443,6 @@ $.extend(Action.prototype, {
             }else{
                 return false;
             }
-            
-            
-
-                
-           
-            
-
     },
     //DFS算法
     //参数说明：
@@ -495,12 +562,45 @@ $.extend(Action.prototype, {
     },
     drwaBoom: function(ctx, lastPoint,nowPoint) {
         var self = this;
+        if(self.config.combo>8){
+         self.config.combo=1;
+        }
         var eHeight = self.config.elementHeight,
             eWidth = self.config.elementWidth,
             boom = self.config.boom,
+            combo=self.config.combo,
             trans = self.config.rootSize;
+
         $($(".boom")[0]).css({"top":+lastPoint.y+"px","left":+lastPoint.x+"px"});
         $($(".boom")[1]).css({"top":+nowPoint.y+"px","left":+nowPoint.x+"px"});
+        //消除声音特效
+        //self.config.eliminate5.play();
+        switch(combo){
+            case 1:
+                self.config.eliminate1.play();
+                break;
+            case 2:
+                self.config.eliminate2.play();
+                break;
+            case 3:
+                self.config.eliminate3.play();
+                break;
+            case 4:
+                self.config.eliminate4.play();
+                break;
+            case 5:
+                self.config.eliminate5.play();
+                break;
+            case 6:
+                self.config.eliminate6.play();
+                break;
+            case 7:
+                self.config.eliminate7.play();
+                break;
+            case 8:
+                self.config.eliminate8.play();
+                break;
+        }
         //$(".boom").css("top","20px");
         $(".boom").removeClass("hide");
         setTimeout(function(){
@@ -524,7 +624,73 @@ $.extend(Action.prototype, {
         //     ctx.scale(10/7,10/7);
         //     ctx.drawImage(boom,0,120,125,135,ePoint.x,ePoint.y,125*trans,125*trans);
         // },400);
-    }
+    },
+    drawCombo:function(ctx,combo,trans){
+        var self=this;
+        var sprite3=self.config.sprite3,
+            clientHeight=self.config.clientHeight,
+            clientWidth=self.config.clientWidth,
+            y=15,//comob位置
+            x=clientWidth-150,
+            x1=x+125 * trans/3,//num位置
+            y1=y+30,
+            p=(combo-1)*30,
+            validTime=self.config.validTime;
+            // ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
+            // ctx.drawImage(sprite3, 0, 85, 125, 40, x, y, 125 * trans*1.5, 40 * trans*1.5);
+            // ctx.drawImage(sprite3, 0, 40, 30, 35, x1, y1, 30 * trans*1.5, 35 * trans*1.5);
+            // setTimeout(function(){
+                ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
+                ctx.drawImage(sprite3, 0, 85, 125, 40, x, y, 125 * trans, 40 * trans);
+                ctx.drawImage(sprite3, p, 40, 30, 35, x1, y1, 30 * trans, 35 * trans);
+            //},500);
+            clearTimeout(self.config.timer);
+            self.config.timer=setTimeout(function(){
+                ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
+                self.config.combo=0;
+            },validTime);
+    },
+    drawScore:function(ctx,score,trans){
+        var self=this;
+        var sprite3=self.config.sprite3,
+            clientHeight=self.config.clientHeight,
+            clientWidth=self.config.clientWidth,
+            y=35,//score位置
+            x=clientWidth-210,
+            num=[5,35,68,98,133,165,198,229,261,296];
+        // var s=score.toString(),
+        //     length=s.length();
+        ctx.clearRect(x-32*trans*5,y,32*trans*5,40*trans);
+        while(score>9){
+            var n=score%10;
+            score=Math.floor(score/10);
+            ctx.drawImage(sprite3, num[n], 0, 32, 40, x, y, 32 * trans, 40 * trans);
+            x=x-32*trans;
+        }
+        ctx.drawImage(sprite3, num[score], 0, 32, 40, x, y, 32 * trans, 40 * trans);
+    },
+    drawTime:function(ctx,time,trans){
+        var self=this;
+        var sprite3=self.config.sprite3,
+            clientHeight=self.config.clientHeight,
+            clientWidth=self.config.clientWidth,
+            x=clientWidth-270,
+            y=clientHeight-70,
+            gameTime=self.config.gameTime;
+
+        var width=(190/gameTime)*time,
+            begin=198-width;
+        ctx.clearRect(x,y,270*trans,70*trans);
+        ctx.drawImage(sprite3, 210, 75, 60, 60, x, y, 70 * trans, 65 * trans);
+        ctx.drawImage(sprite3, begin, 149, width, 25, x+70*trans, y+60*trans/3, width * trans, 25 * trans);
+        setTimeout(function(){
+            if(time>0){
+                self.drawTime(ctx,time-1,trans);
+            }else{//时间到了
+                console.log("time UP!");
+            }
+        },1000);
+    },
 });
 new Action().init();
 
