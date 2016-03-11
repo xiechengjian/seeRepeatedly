@@ -11,6 +11,21 @@ $init:"../images/";
         //-webkit-transform:scale(0);
         //-webkit-transition:.5s ease;
     }
+    .loading{
+        width: 6.4rem;
+        height: 10.39rem;
+        background-color: #000;
+        .loadingImg{
+            position: absolute;
+            width: 1.97rem;
+            height: 1.93rem;
+            background-image: url(#{$init}loading_01.png);
+            background-size: 1.97rem 1.93rem;
+            top:3rem;
+            left: 2rem;
+            -webkit-animation:loading 1s linear infinite
+        }
+    }
     .home-page{
         width: 6.4rem;
         height: 10.39rem;
@@ -300,5 +315,38 @@ $init:"../images/";
         opacity: 1;
     }
 }
-@-webkit-keyframes stars{
+@-webkit-keyframes loading{
+    0%{
+        background-image: url(#{$init}loading_01.png);
+    }
+    10%{
+        background-image: url(#{$init}loading_02.png);
+    }
+    20%{
+        background-image: url(#{$init}loading_03.png);
+    }
+    30%{
+        background-image: url(#{$init}loading_04.png);
+    }
+    40%{
+        background-image: url(#{$init}loading_05.png);
+    }
+    50%{
+        background-image: url(#{$init}loading_06.png);
+    }
+    60%{
+        background-image: url(#{$init}loading_07.png);
+    }
+    70%{
+        background-image: url(#{$init}loading_08.png);
+    }
+    80%{
+        background-image: url(#{$init}loading_09.png);
+    }
+    90%{
+        background-image: url(#{$init}loading_10.png);
+    }
+    100%{
+        background-image: url(#{$init}loading_11.png);
+    }
 }

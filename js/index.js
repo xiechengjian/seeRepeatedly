@@ -41,7 +41,7 @@ $.extend(Action.prototype, {
         gameTime:60,//总的计时默认60s
         bgm1:new Audio(),//开场音乐
         bgm2:new Audio(),//游戏主场景音乐
-        eliminate1:new Audio(),//爆炸的8种音效
+        eliminate1:new Audio(),//连击的8种音效
         eliminate2:new Audio(),
         eliminate3:new Audio(),
         eliminate4:new Audio(),
@@ -98,10 +98,7 @@ $.extend(Action.prototype, {
         self.config.drop.src="music/drop.mp3";
         var trans = self.config.rootSize;
         //界面监听
-        self.config.sprite2.onload = function() {
-            //self.initMap(ctx);
-            self.initListener();
-        }
+        self.pageLoad();
         
         
     },
@@ -110,6 +107,7 @@ $.extend(Action.prototype, {
         var self = this;
         var canvas = document.getElementById('myCanvas');
         self.config.bgm1.play();
+        self.config.bgm1.loop=true;
         //首页监听事件，点击进入模式选择
         $(".home-page").on('click',function(e){
             self.config.bgm1.pause();
@@ -691,6 +689,53 @@ $.extend(Action.prototype, {
             }
         },1000);
     },
+    //页面加载
+    pageLoad: function(){
+        var self = this;
+        function Load(){}
+        //图片，音乐加载
+        Load.prototype.loadImgs = function(urls,callback) {
+            this.urls = urls;
+            this.imgNumbers = urls.length;
+            this.loadImgNumbers = 0;
+            var that =this;
+            for(var i=0;i<urls.length;i++){
+                var obj = new Image();
+                obj.src = urls[i];
+                obj.onload = function(){
+                    that.loadImgNumbers++;
+                    callback(parseInt((that.loadImgNumbers/that.imgNumbers)*100));
+                }
+            }
+        };
+        //音乐加载
+        Load.prototype.loadMusic = function(urls,callback) {
+            this.urls = urls;
+            this.musicNumbers = urls.length;
+            this.loadMusicNumbers = 0;
+            var that =this;
+            for(var i=0;i<urls.length;i++){
+                var obj = new Audio();
+                obj.src = urls[i];
+                obj.onloadedmetadata = function(){
+                    that.loadMusicNumbers++;
+                    callback(parseInt((that.loadMusicNumbers/that.musicNumbers)*100));
+                }
+            }
+        };
+        var loader=new Load();
+        loader.loadImgs([self.config.sprite1.src,self.config.sprite2.src,self.config.sprite3.src,self.config.boom.src,'images/home.jpg','images/bg0.jpg','images/bg1.png','images/common1.png','images/home.jpg','images/home1.png','images/home1.jpg','images/grass.png'],function(percent){
+                if(percent==100){//图片加载完后
+                    loader.loadMusic([self.config.bgm1.src,self.config.bgm2.src,self.config.eliminate1.src,self.config.eliminate2.src,self.config.eliminate3.src,self.config.eliminate4.src,self.config.eliminate5.src,self.config.eliminate6.src,self.config.eliminate7.src,self.config.eliminate8.src,self.config.drop.src],function(percent){
+                        if(percent==100){//音乐加载完后
+                            $(".loading").addClass("hide");
+                            $(".home-page").removeClass("hide");
+                            self.initListener();
+                        }
+                    });
+                }
+        });
+    }
 });
 new Action().init();
 

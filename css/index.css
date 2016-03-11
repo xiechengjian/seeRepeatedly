@@ -6,6 +6,19 @@
   overflow: hidden; }
   .wrapper .hide {
     display: none; }
+  .wrapper .loading {
+    width: 6.4rem;
+    height: 10.39rem;
+    background-color: #000; }
+    .wrapper .loading .loadingImg {
+      position: absolute;
+      width: 1.97rem;
+      height: 1.93rem;
+      background-image: url(../images/loading_01.png);
+      background-size: 1.97rem 1.93rem;
+      top: 3rem;
+      left: 2rem;
+      -webkit-animation: loading 1s linear infinite; }
   .wrapper .home-page {
     width: 6.4rem;
     height: 10.39rem;
@@ -242,6 +255,28 @@
     opacity: 0.3; }
   100% {
     opacity: 1; } }
-@-webkit-keyframes stars {}
+@-webkit-keyframes loading {
+  0% {
+    background-image: url(../images/loading_01.png); }
+  10% {
+    background-image: url(../images/loading_02.png); }
+  20% {
+    background-image: url(../images/loading_03.png); }
+  30% {
+    background-image: url(../images/loading_04.png); }
+  40% {
+    background-image: url(../images/loading_05.png); }
+  50% {
+    background-image: url(../images/loading_06.png); }
+  60% {
+    background-image: url(../images/loading_07.png); }
+  70% {
+    background-image: url(../images/loading_08.png); }
+  80% {
+    background-image: url(../images/loading_09.png); }
+  90% {
+    background-image: url(../images/loading_10.png); }
+  100% {
+    background-image: url(../images/loading_11.png); } }
 
 /*# sourceMappingURL=index.css.map */
