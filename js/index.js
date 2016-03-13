@@ -53,6 +53,7 @@ $.extend(Action.prototype, {
         eliminate7:new Audio(),
         eliminate8:new Audio(),
         sound_score:new Audio(),
+        sound_ready:new Audio(),
         drop:new Audio(),//点击音效
         start:false,
         checkPoint:0,//当前关卡数
@@ -99,7 +100,8 @@ $.extend(Action.prototype, {
     //初始化
     init: function() {
         var self = this;
-        self.config.rootSize = parseFloat($('html').css('font-size')) / 100;
+        self.config.rootSize = (parseFloat($('html').css('font-size')) / 100)-0.05;
+        //if(self.config.rootSize<=0.5)self.config.rootSize-=0.05;
         self.config.clientWidth = document.documentElement.clientWidth;
         self.config.clientHeight = document.documentElement.clientHeight;
         $(".home-page").css('height',self.config.clientHeight+'px');
@@ -122,6 +124,7 @@ $.extend(Action.prototype, {
         self.config.eliminate7.src="music/eliminate7.mp3";
         self.config.eliminate8.src="music/eliminate8.mp3";
         self.config.sound_score.src="music/score.mp3";
+        self.config.sound_ready.src="music/ready.mp3";
         self.config.bgm1.src="music/bgm1.mp3";
         self.config.bgm2.src="music/bgm2.mp3";
         self.config.drop.src="music/drop.mp3";
@@ -157,6 +160,10 @@ $.extend(Action.prototype, {
             self.config.leftGameTime=60;
             self.config.score=0;
             self.config.combo=0;
+            self.config.bgm1.pause();
+            // self.config.bgm2.load();
+            // self.config.bgm1.load();
+            self.config.bgm2.play();
             self.classicMode(ctx,point);
         });
         //闪电模式
@@ -191,7 +198,7 @@ $.extend(Action.prototype, {
             if(!$(".pausePanel").hasClass("hide")){
                 $(".pausePanel").addClass("hide");
             }
-
+            $(".score").empty();
             $(".start").removeClass("start-left");
             $(".start").removeClass("start-right");
             $(".mask").addClass("hide");
@@ -669,27 +676,35 @@ $.extend(Action.prototype, {
         //self.config.eliminate5.play();
         switch(combo){
             case 1:
+                self.config.eliminate1.load();
                 self.config.eliminate1.play();
                 break;
             case 2:
+                self.config.eliminate2.load();
                 self.config.eliminate2.play();
                 break;
             case 3:
+                self.config.eliminate3.load();
                 self.config.eliminate3.play();
                 break;
             case 4:
+                self.config.eliminate4.load();
                 self.config.eliminate4.play();
                 break;
             case 5:
+                self.config.eliminate5.load();
                 self.config.eliminate5.play();
                 break;
             case 6:
+                self.config.eliminate6.load();
                 self.config.eliminate6.play();
                 break;
             case 7:
+                self.config.eliminate7.load();
                 self.config.eliminate7.play();
                 break;
             case 8:
+                self.config.eliminate8.load();
                 self.config.eliminate8.play();
                 break;
         }
@@ -802,6 +817,7 @@ $.extend(Action.prototype, {
         self.config.bgm2.pause();
         $(".mask").removeClass("hide");
         $(".scorePanel").removeClass("hide");
+        clearInterval(self.config.gameTimer);
         self.config.sound_score.play();
         setTimeout(function(){
             var timer=setInterval(function(){
@@ -830,20 +846,21 @@ $.extend(Action.prototype, {
                     self.config.binaryMap[i][j]=temp[i][j];
                 }
             }
-            setTimeout(function(){  
+
+            setTimeout(function(){ 
+                self.config.sound_ready.load();
+                self.config.sound_ready.play(); 
                 $(".start").addClass("start-left");
             },500);
             //显示开始！提示句，1.5s后开始游戏
             setTimeout(function(){
                 $(".mask").addClass("hide");
                 $(".start").addClass("start-right");
-                self.config.bgm1.pause();
-                self.config.bgm2.play();
+                self.config.sound_ready.pause();
                 var bMap = self.config.binaryMap;//二进制地图
                 //经典模式地图初始化
                 self.initMap(ctx,bMap);
                 var time=self.config.gameTime,
-
                     trans=self.config.rootSize;
                 self.drawTime(ctx,time,trans);
             },2000);
@@ -886,7 +903,7 @@ $.extend(Action.prototype, {
                         $(".loading").addClass("hide");
                         $(".home-page").removeClass("hide");
                         self.initListener();
-                    },2000);
+                    },3000);
                     return;
                 }else{
                     obj.onloadedmetadata = function(){
@@ -899,11 +916,14 @@ $.extend(Action.prototype, {
         var loader=new Load();
         loader.loadImgs([self.config.sprite1.src,self.config.sprite2.src,self.config.sprite3.src,self.config.boom.src,'images/home.jpg','images/bg0.jpg','images/bg1.png','images/common1.png','images/home.jpg','images/home1.png','images/home1.jpg','images/grass.png'],function(percent){
                 if(percent==100){//图片加载完后
-                    loader.loadMusic([self.config.bgm1.src,self.config.bgm2.src,self.config.eliminate1.src,self.config.eliminate2.src,self.config.eliminate3.src,self.config.eliminate4.src,self.config.eliminate5.src,self.config.eliminate6.src,self.config.eliminate7.src,self.config.eliminate8.src,self.config.drop.src,self.config.sound_score.src],function(percent){
+                    loader.loadMusic([self.config.bgm1.src,self.config.sound_ready.src,self.config.bgm2.src,self.config.eliminate1.src,self.config.eliminate2.src,self.config.eliminate3.src,self.config.eliminate4.src,self.config.eliminate5.src,self.config.eliminate6.src,self.config.eliminate7.src,self.config.eliminate8.src,self.config.drop.src,self.config.sound_score.src],function(percent){
                         if(percent==100){//音乐加载完后
-                            $(".loading").addClass("hide");
-                            $(".home-page").removeClass("hide");
-                            self.initListener();
+                            setTimeout(function(){
+                                $(".loading").addClass("hide");
+                                $(".home-page").removeClass("hide");
+                                self.initListener();
+                            },3000);
+                            
                         }
                     });
                 }
