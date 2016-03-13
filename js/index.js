@@ -37,8 +37,11 @@ $.extend(Action.prototype, {
         combo:0,//连击
         validTime:2000,//combo有效时间500ms
         timer:0,//setTimeout,时间种子
+        gameTimer:0,//游戏时间种子，暂停时间！！
         score:0,//计分
+        gameMode:0,//0表示经典模式1表示闪电模式
         gameTime:60,//总的计时默认60s
+        leftGameTime:60,//游戏当前剩余时间
         bgm1:new Audio(),//开场音乐
         bgm2:new Audio(),//游戏主场景音乐
         eliminate1:new Audio(),//连击的8种音效
@@ -49,16 +52,40 @@ $.extend(Action.prototype, {
         eliminate6:new Audio(),
         eliminate7:new Audio(),
         eliminate8:new Audio(),
+        sound_score:new Audio(),
         drop:new Audio(),//点击音效
         start:false,
+        checkPoint:0,//当前关卡数
+        //经典模式地图6*7
+        classicMaps:[
+            [   
+                [4, 2, 6, 3, 5, 1],
+                [0, 0, 0, 0, 0, 6],
+                [0, 0, 0, 0, 0, 1],
+                [4, 2, 4, 3, 4, 5],
+                [4, 0, 0, 0, 0, 4],
+                [1, 0, 0, 0, 0, 3],
+                [6, 6, 4, 4, 3, 1],
+            ],
+            [
+                [3, 2, 6, 3, 5, 1],
+                [1, 0, 0, 0, 0, 6],
+                [1, 0, 0, 0, 0, 1],
+                [4, 2, 4, 3, 3, 5],
+                [4, 0, 0, 0, 0, 4],
+                [1, 0, 0, 0, 0, 3],
+                [5, 5, 4, 4, 3, 1],
+            ]
+        ],
+        //当前游戏二进制地图6*7
         binaryMap: [
-            [7, 2, 6, 3, 5, 1], //二进制地图6*7
-            [0, 0, 0, 0, 0, 6],
-            [0, 0, 0, 0, 0, 1],
-            [4, 2, 4, 3, 7, 5],
-            [7, 1, 0, 0, 0, 7],
-            [1, 0, 0, 0, 0, 3],
-            [6, 6, 4, 4, 3, 1],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
         ],
         items: [        //items在sprite中的微调校正
             [0,70, 140, 212, 283, 355, 428], //X轴校正
@@ -77,6 +104,7 @@ $.extend(Action.prototype, {
         self.config.clientHeight = document.documentElement.clientHeight;
         $(".home-page").css('height',self.config.clientHeight+'px');
         $(".game-mode").css('height',self.config.clientHeight+'px');
+        $(".gameBg").css('height',self.config.clientHeight+'px');
         var canvas = document.getElementById('myCanvas');
         var ctx = canvas.getContext('2d');
         //资源初始化
@@ -93,39 +121,83 @@ $.extend(Action.prototype, {
         self.config.eliminate6.src="music/eliminate6.mp3";
         self.config.eliminate7.src="music/eliminate7.mp3";
         self.config.eliminate8.src="music/eliminate8.mp3";
+        self.config.sound_score.src="music/score.mp3";
         self.config.bgm1.src="music/bgm1.mp3";
         self.config.bgm2.src="music/bgm2.mp3";
         self.config.drop.src="music/drop.mp3";
         var trans = self.config.rootSize;
         //界面监听
         self.pageLoad();
-        
-        
     },
     //界面监听初始化
     initListener: function() {
         var self = this;
         var canvas = document.getElementById('myCanvas');
+        var startY = self.config.elementStart.y,
+            clientHeight=self.config.clientHeight,
+            clientWidth=self.config.clientWidth;
         self.config.bgm1.play();
         self.config.bgm1.loop=true;
+        self.config.bgm2.loop=true;
         //首页监听事件，点击进入模式选择
         $(".home-page").on('click',function(e){
-            self.config.bgm1.pause();
+            //self.config.bgm1.pause();
             e.preventDefault();
             $(".home-page").addClass("hide");
             $(".game-mode").removeClass("hide");
         });
         //模式选择监听事件，选择两种模式
         //经典模式
-        $(".jindian-mode").on('click',function(e){
+        $(".classic-mode").on('touchstart',function(e){
+            e.preventDefault();
+            self.config.gameMode=0;
+            self.config.checkPoint=0;
+            var point=self.config.checkPoint;
+            self.config.gameTime=60;
+            self.config.leftGameTime=60;
+            self.config.score=0;
+            self.config.combo=0;
+            self.classicMode(ctx,point);
+        });
+        //闪电模式
+        $(".lighting-mode").on('touchstart',function(e){
             e.preventDefault();
             $(".game-mode").addClass("hide");
             $(".gameBg").removeClass("hide");
-            //self.config.bgm2.play();
-            self.initMap(ctx);
-            var time=self.config.gameTime,
+            $(".scorePanel").addClass("hide");
+        })
+        //暂停按钮
+        $(".pauseBtn").on('click',function(){
+            $(".mask").removeClass("hide");
+            $(".pausePanel").removeClass("hide");
+            self.config.bgm2.pause();
+            clearInterval(self.config.gameTimer);
+        });
+        //返回游戏界面
+        $(".returnGame").on('touchstart',function(){
+            $(".mask").addClass("hide");
+            $(".pausePanel").addClass("hide");
+            self.config.bgm2.play();
+            var time=self.config.leftGameTime,
                 trans=self.config.rootSize;
             self.drawTime(ctx,time,trans);
+        });
+        //退出当前游戏模式
+        $(".outGame").on('touchstart',function(){
+            //清空当前游戏状态
+            if(!$(".scorePanel").hasClass("hide")){
+                $(".scorePanel").addClass("hide");
+            }
+            if(!$(".pausePanel").hasClass("hide")){
+                $(".pausePanel").addClass("hide");
+            }
+
+            $(".start").removeClass("start-left");
+            $(".start").removeClass("start-right");
+            $(".mask").addClass("hide");
+            $(".gameBg").addClass("hide");
+            $(".game-mode").removeClass("hide");
+            ctx.clearRect(0,0,clientWidth,clientHeight);
         });
         //首页眼睛眨的动画
         var timer=setInterval(function(){
@@ -145,18 +217,12 @@ $.extend(Action.prototype, {
         $("#myCanvas").on('touchstart', function(e) {
             e.preventDefault();
             self.canvasTouch(ctx, e, self);
-            // x = e.originalEvent.touches[0].clientX,
-            // y = e.originalEvent.touches[0].clientY;
-            // var ePoint1=new Point(x,y);
-            // var ePoint2=new Point(50,50);
-            // self.drwaBoom(ctx,ePoint1,ePoint2);
         });
     },
-    //元素地图初始化
-    initMap: function(ctx) {
+    //元素地图初始化,bmap二进制地图
+    initMap: function(ctx,bMap) {
         var self = this;
-        var bMap = self.config.binaryMap, //二进制地图
-            eMap = [], //元素地图
+        var eMap = [], //元素地图
             startP = self.config.elementStart,
             startX = self.config.elementStart.x,
             startY = self.config.elementStart.y,
@@ -166,7 +232,7 @@ $.extend(Action.prototype, {
             clientWidth=self.config.clientWidth,
             trans = self.config.rootSize;
         //清屏
-        ctx.clearRect(0,startY,clientWidth,clientHeight-180);
+        ctx.clearRect(0,startY-(eHeight*trans)/2-5,clientWidth,clientHeight-150);
         self.config.lastElement=new Element();
         self.config.nowElement=new Element();
         for (var i = 0; i < 7; i++) {
@@ -191,6 +257,34 @@ $.extend(Action.prototype, {
         self.config.start=true;
         self.config.elementMap.length=0;
         self.config.elementMap=eMap;
+        //没有元素了，赢了
+        if(!eMap.length){
+            //console.log("赢了！");
+            self.config.checkPoint++;
+            var checkPoint=self.config.checkPoint,
+                classicMaps=self.config.classicMaps;
+            switch(self.config.gameMode){
+                case 0://经典模式
+                //还有关卡，就继续下一个地图
+                if(checkPoint<classicMaps.length){
+                    var temp=self.config.classicMaps[checkPoint];
+                    for(var i=0;i<temp.length;i++){
+                        for(var j=0;j<temp[i].length;j++){
+                            self.config.binaryMap[i][j]=temp[i][j];
+                        }
+                    }
+                    var bMap = self.config.binaryMap;//二进制地图
+                        //经典模式地图初始化
+                        self.config.start=false;
+                        setTimeout(function(){
+                            self.initMap(ctx,bMap);
+                        },1000);
+                }else{
+                    self.gameOver(self.config.score);
+                }
+                break;
+            }
+        }
         return eMap;
     },
     //画连连看基本元素
@@ -312,9 +406,10 @@ $.extend(Action.prototype, {
                             ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
                         }else{
                             self.config.combo++;
+                            //绘制combo
+                            self.drawCombo(ctx,self.config.combo,trans);
                         }
-                        //绘制combo
-                        self.drawCombo(ctx,self.config.combo,trans);
+                        
                         //计分！！统计
                         var comboScore=0;
                         if(combo){
@@ -325,7 +420,8 @@ $.extend(Action.prototype, {
                         self.drawScore(ctx,score,trans);
                         
                         setTimeout(function(){
-                            self.initMap(ctx);
+                            var bMap = self.config.binaryMap;//二进制地图
+                            self.initMap(ctx,bMap);
                         },50);
                         //绘制爆炸
                         setTimeout(function(){
@@ -349,8 +445,6 @@ $.extend(Action.prototype, {
                 return;
             }
         }
-
-
     },
     //寻找路径函数DFS算法
     findPath:function(ctx){
@@ -632,7 +726,7 @@ $.extend(Action.prototype, {
             x=clientWidth-150,
             x1=x+125 * trans/3,//num位置
             y1=y+30,
-            p=(combo-1)*30,
+            p=(combo-1)*29.5,
             validTime=self.config.validTime;
             // ctx.clearRect(x,y,125*trans*1.5,70*trans*1.5);
             // ctx.drawImage(sprite3, 0, 85, 125, 40, x, y, 125 * trans*1.5, 40 * trans*1.5);
@@ -681,13 +775,79 @@ $.extend(Action.prototype, {
         ctx.clearRect(x,y,270*trans,70*trans);
         ctx.drawImage(sprite3, 210, 75, 60, 60, x, y, 70 * trans, 65 * trans);
         ctx.drawImage(sprite3, begin, 149, width, 25, x+70*trans, y+60*trans/3, width * trans, 25 * trans);
-        setTimeout(function(){
+        self.config.gameTimer=setTimeout(function(){
+            //
             if(time>0){
+                self.config.leftGameTime--;
                 self.drawTime(ctx,time-1,trans);
             }else{//时间到了
-                console.log("time UP!");
+                //console.log("time UP!");
+                $(".mask").removeClass("hide");
+                $(".timeUp").addClass("timeUp-move");
+                setTimeout(function(){
+                    $(".mask").addClass("hide");
+                    $(".timeUp").removeClass("timeUp-move");
+                    self.gameOver(self.config.score);
+                },1000);
             }
         },1000);
+    },
+    //闪电模式
+    lighting:function(ctx){
+    },
+    //游戏结束
+    gameOver:function(score){
+        var self=this,
+            i=0;
+        self.config.bgm2.pause();
+        $(".mask").removeClass("hide");
+        $(".scorePanel").removeClass("hide");
+        self.config.sound_score.play();
+        setTimeout(function(){
+            var timer=setInterval(function(){
+                if(i<=score){
+                    $(".score").empty();
+                    $(".score").append(i);
+                    i=i+50;
+                }else{
+                    clearInterval(timer);
+                    self.config.sound_score.pause();
+                }
+            },1);
+        },1000);
+    },
+    //经典模式
+    classicMode:function(ctx,checkPoint){
+        var self=this;
+        $(".game-mode").addClass("hide");
+        $(".gameBg").removeClass("hide");
+        $(".mask").removeClass("hide");
+            //self.config.binaryMap.length=0;
+            //金典模式游戏初始化
+            var temp=self.config.classicMaps[checkPoint];
+            for(var i=0;i<temp.length;i++){
+                for(var j=0;j<temp[i].length;j++){
+                    self.config.binaryMap[i][j]=temp[i][j];
+                }
+            }
+            setTimeout(function(){  
+                $(".start").addClass("start-left");
+            },500);
+            //显示开始！提示句，1.5s后开始游戏
+            setTimeout(function(){
+                $(".mask").addClass("hide");
+                $(".start").addClass("start-right");
+                self.config.bgm1.pause();
+                self.config.bgm2.play();
+                var bMap = self.config.binaryMap;//二进制地图
+                //经典模式地图初始化
+                self.initMap(ctx,bMap);
+                var time=self.config.gameTime,
+
+                    trans=self.config.rootSize;
+                self.drawTime(ctx,time,trans);
+            },2000);
+            //self.gameOver(10000);
     },
     //页面加载
     pageLoad: function(){
@@ -717,16 +877,29 @@ $.extend(Action.prototype, {
             for(var i=0;i<urls.length;i++){
                 var obj = new Audio();
                 obj.src = urls[i];
-                obj.onloadedmetadata = function(){
-                    that.loadMusicNumbers++;
-                    callback(parseInt((that.loadMusicNumbers/that.musicNumbers)*100));
+                //if(obj.src){
+                var u=navigator.userAgent;
+                var and= u.indexOf('Android') > -1 || u.indexOf('Linux') > -1;
+                if(and){
+                    //console.log("Android");
+                    setTimeout(function(){
+                        $(".loading").addClass("hide");
+                        $(".home-page").removeClass("hide");
+                        self.initListener();
+                    },2000);
+                    return;
+                }else{
+                    obj.onloadedmetadata = function(){
+                        that.loadMusicNumbers++;
+                        callback(parseInt((that.loadMusicNumbers/that.musicNumbers)*100));
+                    }
                 }
             }
         };
         var loader=new Load();
         loader.loadImgs([self.config.sprite1.src,self.config.sprite2.src,self.config.sprite3.src,self.config.boom.src,'images/home.jpg','images/bg0.jpg','images/bg1.png','images/common1.png','images/home.jpg','images/home1.png','images/home1.jpg','images/grass.png'],function(percent){
                 if(percent==100){//图片加载完后
-                    loader.loadMusic([self.config.bgm1.src,self.config.bgm2.src,self.config.eliminate1.src,self.config.eliminate2.src,self.config.eliminate3.src,self.config.eliminate4.src,self.config.eliminate5.src,self.config.eliminate6.src,self.config.eliminate7.src,self.config.eliminate8.src,self.config.drop.src],function(percent){
+                    loader.loadMusic([self.config.bgm1.src,self.config.bgm2.src,self.config.eliminate1.src,self.config.eliminate2.src,self.config.eliminate3.src,self.config.eliminate4.src,self.config.eliminate5.src,self.config.eliminate6.src,self.config.eliminate7.src,self.config.eliminate8.src,self.config.drop.src,self.config.sound_score.src],function(percent){
                         if(percent==100){//音乐加载完后
                             $(".loading").addClass("hide");
                             $(".home-page").removeClass("hide");
