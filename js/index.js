@@ -4,10 +4,12 @@ function Point(x, y) {
     this.y = y;
 } 
 //struct Element
-function Element(ePoint, mark, binaryPoint) { //元素的位置，和元素的标志,元素二进制图的位置
+function Element(ePoint, mark, binaryPoint,alpha,status) { //元素的位置，和元素的标志,元素二进制图的位置
     this.ePoint = (ePoint != undefined) ? ePoint : new Point(0, 0); //通过元素标志判断是否为同一个元素
     this.mark = (mark != undefined) ? mark : -1;
     this.binaryPoint = (binaryPoint != undefined) ? binaryPoint : new Point(-1, -1);
+    this.alpha = (alpha != undefined) ? alpha : 1;//默认透明度为1
+    this.status = (status != undefined) ? status : 0;//默认状态0
 }
 //struct Path 
 //路径至少两个点，最多四个点（即最多有两次拐弯）
@@ -36,8 +38,12 @@ $.extend(Action.prototype, {
         boom: new Image(), //绘制爆炸
         combo:0,//连击
         validTime:2000,//combo有效时间500ms
+        lightingSpeed:0.3,//闪电模式的速度
+        lightingModeTimer:0,//闪电模式时间种子
+        isLighting:0,//闪电数
         timer:0,//setTimeout,时间种子
         gameTimer:0,//游戏时间种子，暂停时间！！
+        initMapTimer:0,//游戏地图刷新种子
         score:0,//计分
         gameMode:0,//0表示经典模式1表示闪电模式
         gameTime:60,//总的计时默认60s
@@ -57,6 +63,22 @@ $.extend(Action.prototype, {
         drop:new Audio(),//点击音效
         start:false,
         checkPoint:0,//当前关卡数
+        //闪电模式初始化地图6*7
+        lightingInitMaps:[
+            [ 
+                [0, 5, 0, 0, 1, 1],
+                [0, 0, 0, 0, 0, 2],
+                [4, 3, 6, 0, 2, 0],
+                [0, 0, 0, 0, 1, 1],
+                [0, 0, 0, 0, 4, 0],
+                [0, 3, 0, 0, 5, 4],
+                [6, 4, 0, 0, 0, 0],
+            ],
+        ],
+        //闪电地图,出现在闪电地图的位置Point
+        lightingMaps:[
+            
+        ],
         //经典模式地图6*7
         classicMaps:[
             [   
@@ -78,8 +100,18 @@ $.extend(Action.prototype, {
                 [5, 5, 4, 4, 3, 1],
             ]
         ],
-        //当前游戏二进制地图6*7
+        //当前游戏二进制地图6*7 
         binaryMap: [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+        ],
+        //当前游戏元素地图
+        currentEMap:[
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
@@ -90,7 +122,7 @@ $.extend(Action.prototype, {
         ],
         items: [        //items在sprite中的微调校正
             [0,70, 140, 212, 283, 355, 428], //X轴校正
-            [0,70, 140, 212, 287, 360, 430],//Y轴校正
+            [0,70, 145, 220, 287, 360, 430],//Y轴校正
         ],
         elementMap: [], //元素地图
         elementStart: new Point(50, 100),
@@ -153,25 +185,13 @@ $.extend(Action.prototype, {
         //经典模式
         $(".classic-mode").on('touchstart',function(e){
             e.preventDefault();
-            self.config.gameMode=0;
-            self.config.checkPoint=0;
-            var point=self.config.checkPoint;
-            self.config.gameTime=60;
-            self.config.leftGameTime=60;
-            self.config.score=0;
-            self.config.combo=0;
-            self.config.bgm1.pause();
-            // self.config.bgm2.load();
-            // self.config.bgm1.load();
-            self.config.bgm2.play();
-            self.classicMode(ctx,point);
+            self.classicMode(ctx);
         });
         //闪电模式
         $(".lighting-mode").on('touchstart',function(e){
             e.preventDefault();
-            $(".game-mode").addClass("hide");
-            $(".gameBg").removeClass("hide");
-            $(".scorePanel").addClass("hide");
+            self.lightingMode(ctx);
+           
         })
         //暂停按钮
         $(".pauseBtn").on('click',function(){
@@ -179,6 +199,10 @@ $.extend(Action.prototype, {
             $(".pausePanel").removeClass("hide");
             self.config.bgm2.pause();
             clearInterval(self.config.gameTimer);
+            if(self.config.gameMode){
+                clearInterval(self.config.lightingModeTimer);
+            }
+             
         });
         //返回游戏界面
         $(".returnGame").on('touchstart',function(){
@@ -188,6 +212,12 @@ $.extend(Action.prototype, {
             var time=self.config.leftGameTime,
                 trans=self.config.rootSize;
             self.drawTime(ctx,time,trans);
+            if(self.config.gameMode){
+                self.config.lightingModeTimer=setInterval(function(){
+                    self.addNewElement(2);
+            },4000)
+            }
+
         });
         //退出当前游戏模式
         $(".outGame").on('touchstart',function(){
@@ -204,7 +234,13 @@ $.extend(Action.prototype, {
             $(".mask").addClass("hide");
             $(".gameBg").addClass("hide");
             $(".game-mode").removeClass("hide");
+            self.config.start=false;
+            clearInterval(self.config.initMapTimer);
             ctx.clearRect(0,0,clientWidth,clientHeight);
+            if(self.config.gameMode){
+                clearInterval(self.config.lightingModeTimer);
+            }
+            
         });
         //首页眼睛眨的动画
         var timer=setInterval(function(){
@@ -240,68 +276,125 @@ $.extend(Action.prototype, {
             trans = self.config.rootSize;
         //清屏
         ctx.clearRect(0,startY-(eHeight*trans)/2-5,clientWidth,clientHeight-150);
-        self.config.lastElement=new Element();
-        self.config.nowElement=new Element();
+        //self.config.lastElement=new Element();
+        //self.config.nowElement=new Element();
         for (var i = 0; i < 7; i++) {
             for (var j = 0; j < 6; j++) {
                 if (bMap[i][j]) {
-                    //元素的位置，和标志
-                    var ePoint = new Point(startX + (eWidth * trans - 5) * j, startY + (eHeight * trans - 5) * i),
-                        mark = bMap[i][j],
-                        binaryPoint = new Point(j, i),
-                        element = new Element(ePoint, mark, binaryPoint);
-                    eMap.push(element);
-                    var iPoint = new Point(self.config.items[0][mark - 1], 0);
-                    self.drawElement(ctx, ePoint, iPoint);
+                    //元素的位置，和标志,透明度，状态
+                    var ePoint = bMap[i][j].ePoint,
+                        alpha=bMap[i][j].alpha,
+                        mark = bMap[i][j].mark,
+                        status=bMap[i][j].status;
+                    if(alpha<1){
+                        alpha+=self.config.lightingSpeed;
+                        bMap[i][j].alpha+=self.config.lightingSpeed;
+                        setTimeout(function(){
+                            self.config.isLighting=false;
+                        },2000);
+                        //self.config.currentEMap[i][j].alpha+=0.2;
+                    }else{
+                        alpha=1;
+                        bMap[i][j].alpha=1;
+                        //
+                        //self.config.currentEMap[i][j].alpha=1;
+                        eMap.push(bMap[i][j]);
+                    }
+                    //itmes的位置
+                    //闪电模式的items
+                    if(self.config.gameMode){
+                        //随机的items
+                        var it=2;
+                        if(mark>7){
+                            mark-=7;
+                            it=3;
+                        }
+                        var iPoint = new Point(self.config.items[0][mark - 1], self.config.items[1][it]);
+                    }else{
+                        var iPoint = new Point(self.config.items[0][mark - 1], 0);
+                    }
+                    //画元素
+                    self.drawElement(ctx, ePoint, iPoint,alpha,status,mark);
                 }
             }
         }
-        //self.findPath();
-        //self.drawCombo(ctx,5,trans);
-        // setTimeout(function(){
-        //     self.drawCombo(ctx,0,trans);
-        // },100);
         self.config.start=true;
-        self.config.elementMap.length=0;
+        self.config.elementMap.length=0;//元素地图重新赋值
         self.config.elementMap=eMap;
         //没有元素了，赢了
-        if(!eMap.length){
+        if(!eMap.length&&!self.config.isLighting){
             //console.log("赢了！");
-            self.config.checkPoint++;
-            var checkPoint=self.config.checkPoint,
-                classicMaps=self.config.classicMaps;
             switch(self.config.gameMode){
                 case 0://经典模式
                 //还有关卡，就继续下一个地图
+                self.config.checkPoint++;
+                var checkPoint=self.config.checkPoint,
+                classicMaps=self.config.classicMaps;
                 if(checkPoint<classicMaps.length){
                     var temp=self.config.classicMaps[checkPoint];
                     for(var i=0;i<temp.length;i++){
                         for(var j=0;j<temp[i].length;j++){
-                            self.config.binaryMap[i][j]=temp[i][j];
+                            if(temp[i][j]){
+                                self.config.binaryMap[i][j]=temp[i][j];
+                                var ePoint = new Point(startX + (eWidth * trans - 5) * j, startY + (eHeight * trans - 5) * i),
+                                    mark=temp[i][j],
+                                    binaryPoint = new Point(j, i),
+                                    alpha = 1,
+                                    status = 0,
+                                    element = new Element(ePoint, mark, binaryPoint,alpha,status);
+                                self.config.currentEMap[i][j]=element;
+                            }
                         }
                     }
-                    var bMap = self.config.binaryMap;//二进制地图
-                        //经典模式地图初始化
-                        self.config.start=false;
-                        setTimeout(function(){
-                            self.initMap(ctx,bMap);
-                        },1000);
+                    // var bMap = self.config.currentEMap;//二进制地图
+                    //     //经典模式地图初始化
+                    //     self.config.start=false;
+                    //     setTimeout(function(){
+                    //         self.initMap(ctx,bMap);
+                    //     },1000);
                 }else{
+                    clearInterval(self.config.initMapTimer);
                     self.gameOver(self.config.score);
+                    return ;
                 }
+                break;
+                case 1://闪电模式
+                    clearInterval(self.config.lightingModeTimer);
+                    clearInterval(self.config.initMapTimer);
+                    self.gameOver(self.config.score);
                 break;
             }
         }
         return eMap;
     },
-    //画连连看基本元素
-    drawElement: function(ctx, ePoint, iPoint) { //ePoint元素位置 iPoint是items在sprite的定位
+    //游戏刷新
+    gameRefresh:function(){
         var self = this;
+        var eMap = [], //元素地图
+            startP = self.config.elementStart,
+            startX = self.config.elementStart.x,
+            startY = self.config.elementStart.y,
+            eHeight = self.config.elementHeight,
+            eWidth = self.config.elementWidth,
+            clientHeight=self.config.clientHeight,
+            clientWidth=self.config.clientWidth,
+            trans = self.config.rootSize;
+        //清屏
+        ctx.clearRect(0,startY-(eHeight*trans)/2-5,clientWidth,clientHeight-150);
+        self.config.lastElement=new Element();
+        self.config.nowElement=new Element();
+    },
+    //画连连看基本元素isAlpah是否透明,status元素状态,mark 为items
+    drawElement: function(ctx, ePoint, iPoint,alpha,status,mark) { //ePoint元素位置 iPoint是items在sprite的定位
+        var self = this;
+        ctx.globalAlpha=alpha;
         var eHeight = self.config.elementHeight,
             eWidth = self.config.elementWidth,
             sprite2 = self.config.sprite2,
             sprite1 = self.config.sprite1,
-            trans = self.config.rootSize;
+            trans = self.config.rootSize,
+            eMap = self.config.elementMap,
+            items=self.config.items;
         ctx.clearRect(ePoint.x, ePoint.y, eWidth * trans, eHeight * trans);
         ctx.drawImage(sprite2, 7, 7, eWidth, eHeight, ePoint.x, ePoint.y, eWidth * trans, eHeight * trans);
         if(!self.config.start){
@@ -309,7 +402,24 @@ $.extend(Action.prototype, {
             self.elementSreversal(ctx, ePoint, iPoint);
             }, 300);
         }else{
-            ctx.drawImage(sprite1, iPoint.x, iPoint.y, 70, 70, ePoint.x, ePoint.y + 2, 70 * trans, 70 * trans);
+            if(!status){//默认状态，即为未点击状态
+                ctx.drawImage(sprite1, iPoint.x, iPoint.y, 70, 70, ePoint.x, ePoint.y + 2, 70 * trans, 70 * trans);
+            }else{
+                var eX=ePoint.x,eY=ePoint.y;
+                ctx.clearRect(eX, eY, eWidth * trans - 5, eHeight * trans - 5);
+                ctx.drawImage(sprite2, 98, 5, 75, 95, eX, eY, 75 * trans, 95 * trans);
+                 if(self.config.gameMode){
+                    var it=2;
+                        if(mark>7){
+                            mark-=7;
+                            it=3;
+                    }
+                     ctx.drawImage(sprite1, iPoint.x, iPoint.y, 70, 70, eX + 1, eY + 3, 70 * trans, 70 * trans);
+                 }else{
+                    ctx.drawImage(sprite1, items[0][mark-1]+5, 435, 70, 70, eX + 4, eY + 5, 70 * trans, 70 * trans);
+                }
+            }
+            
         }
     },
     //元素翻转动画
@@ -366,21 +476,28 @@ $.extend(Action.prototype, {
                 eY = eMap[i].ePoint.y;
             var last = self.config.lastElement,
                 now = self.config.nowElement;
+                //点中元素
             if (x > eX && x < eX + eWidth * trans && y > eY && y < eY + eHeight * trans) {
                 if(now.mark==-1){
                     self.config.drop.play();
                 }
                 if (eMap[i] == last || eMap[i] == now) return;
                 //清除上一个element，并重绘
-                if (last.mark != -1 && last != eMap[i] && now != eMap[i] && last != now) {
-                    ctx.clearRect(last.ePoint.x, last.ePoint.y, eWidth * trans - 5, eHeight * trans - 5);
-                    ctx.drawImage(sprite2, 7, 7, eWidth - 8, eHeight - 8, last.ePoint.x, last.ePoint.y, (eWidth - 8) * trans, (eHeight - 8) * trans);
-                    ctx.drawImage(sprite1,items[0][last.mark-1], 0, 70, 70, last.ePoint.x, last.ePoint.y + 2, 70 * trans, 70 * trans);
+                var now_x=eMap[i].binaryPoint.x,now_y=eMap[i].binaryPoint.y;
+                self.config.currentEMap[now_y][now_x].status=1;
+                var last_x=last.binaryPoint.x,last_y=last.binaryPoint.y;
+                if(last_x!=-1){
+                    self.config.currentEMap[last_y][last_x].status=0;
                 }
-                //点击换新的element items[0][eMap[i].mark-1]
-                ctx.clearRect(eX, eY, eWidth * trans - 5, eHeight * trans - 5);
-                ctx.drawImage(sprite2, 98, 5, 75, 95, eX, eY, 75 * trans, 95 * trans);
-                ctx.drawImage(sprite1, items[0][eMap[i].mark-1]+5, 435, 70, 70, eX + 4, eY + 5, 70 * trans, 70 * trans);
+                // if (last.mark != -1 && last != eMap[i] && now != eMap[i] && last != now) {
+                //     ctx.clearRect(last.ePoint.x, last.ePoint.y, eWidth * trans - 5, eHeight * trans - 5);
+                //     ctx.drawImage(sprite2, 7, 7, eWidth - 8, eHeight - 8, last.ePoint.x, last.ePoint.y, (eWidth - 8) * trans, (eHeight - 8) * trans);
+                //     ctx.drawImage(sprite1,items[0][last.mark-1], 0, 70, 70, last.ePoint.x, last.ePoint.y + 2, 70 * trans, 70 * trans);
+                // }
+                // //点击换新的element items[0][eMap[i].mark-1]
+                // ctx.clearRect(eX, eY, eWidth * trans - 5, eHeight * trans - 5);
+                // ctx.drawImage(sprite2, 98, 5, 75, 95, eX, eY, 75 * trans, 95 * trans);
+                // ctx.drawImage(sprite1, items[0][eMap[i].mark-1]+5, 435, 70, 70, eX + 4, eY + 5, 70 * trans, 70 * trans);
                 self.config.lastElement = self.config.nowElement;
                 self.config.nowElement = eMap[i];
                 // var now=self.config.nowElement,last=self.config.lastElement;
@@ -399,6 +516,10 @@ $.extend(Action.prototype, {
                         now=self.config.nowElement;
                         self.config.binaryMap[last.binaryPoint.y][last.binaryPoint.x]=0;
                         self.config.binaryMap[now.binaryPoint.y][now.binaryPoint.x]=0;
+                        self.config.currentEMap[last.binaryPoint.y][last.binaryPoint.x]=0;
+                        self.config.currentEMap[now.binaryPoint.y][now.binaryPoint.x]=0;
+                        self.config.lastElement=new Element();
+                        self.config.nowElement=new Element();
                         //有效时间内连击
                         var validTime=self.config.validTime,
                             score=self.config.score,
@@ -426,10 +547,10 @@ $.extend(Action.prototype, {
                         self.config.score=score;
                         self.drawScore(ctx,score,trans);
                         
-                        setTimeout(function(){
-                            var bMap = self.config.binaryMap;//二进制地图
-                            self.initMap(ctx,bMap);
-                        },50);
+                        // setTimeout(function(){
+                        //     var bMap = self.config.currentEMap;//二进制地图
+                        //     self.initMap(ctx,bMap);
+                        // },50);
                         //绘制爆炸
                         setTimeout(function(){
                         self.drwaBoom(ctx,last.ePoint,now.ePoint);
@@ -784,7 +905,7 @@ $.extend(Action.prototype, {
             x=clientWidth-270,
             y=clientHeight-70,
             gameTime=self.config.gameTime;
-
+        ctx.globalAlpha=1;
         var width=(190/gameTime)*time,
             begin=198-width;
         ctx.clearRect(x,y,270*trans,70*trans);
@@ -802,13 +923,48 @@ $.extend(Action.prototype, {
                 setTimeout(function(){
                     $(".mask").addClass("hide");
                     $(".timeUp").removeClass("timeUp-move");
+                    clearInterval(self.config.initMapTimer);
                     self.gameOver(self.config.score);
                 },1000);
             }
         },1000);
     },
     //闪电模式
-    lighting:function(ctx){
+    lightingMode:function(ctx){
+        var self=this;
+        self.config.gameMode=1;//闪电模式
+            self.config.gameTime=60;
+            self.config.leftGameTime=60;
+            self.config.score=0;
+            self.config.combo=0;
+            self.config.bgm1.pause();
+            self.config.bgm2.load();
+            // self.config.bgm1.load();
+            //ctx.globalAlpha = 0.2;
+            self.config.bgm2.play();
+            self.initGame(ctx,0,self.config.lightingInitMaps);
+            setTimeout(function(){
+              self.config.lightingModeTimer=setInterval(function(){
+                    self.addNewElement(2);
+               },1500) 
+            },3000);
+               
+    },
+    //经典模式
+    classicMode:function(ctx){
+        var self=this;
+        self.config.gameMode=0;
+            self.config.checkPoint=0;
+            var point=self.config.checkPoint;
+            self.config.gameTime=60;
+            self.config.leftGameTime=60;
+            self.config.score=0;
+            self.config.combo=0;
+            self.config.bgm1.pause();
+            self.config.bgm2.load();
+            // self.config.bgm1.load();
+            self.config.bgm2.play();
+            self.initGame(ctx,point,self.config.classicMaps);
     },
     //游戏结束
     gameOver:function(score){
@@ -819,6 +975,7 @@ $.extend(Action.prototype, {
         $(".scorePanel").removeClass("hide");
         clearInterval(self.config.gameTimer);
         self.config.sound_score.play();
+        self.config.start=false;
         setTimeout(function(){
             var timer=setInterval(function(){
                 if(i<=score){
@@ -832,18 +989,36 @@ $.extend(Action.prototype, {
             },1);
         },1000);
     },
-    //经典模式
-    classicMode:function(ctx,checkPoint){
+    //游戏初始化
+    initGame:function(ctx,checkPoint,Maps){
         var self=this;
+        var startX = self.config.elementStart.x,
+            startY = self.config.elementStart.y,
+            eHeight = self.config.elementHeight,
+            eWidth = self.config.elementWidth,
+            trans = self.config.rootSize;
         $(".game-mode").addClass("hide");
         $(".gameBg").removeClass("hide");
+        $(".scorePanel").addClass("hide");
         $(".mask").removeClass("hide");
-            //self.config.binaryMap.length=0;
-            //金典模式游戏初始化
-            var temp=self.config.classicMaps[checkPoint];
+            //self.config.binaryMap.length=0;        
+            //游戏模式初始化
+            var temp=Maps[checkPoint];//选择地图
             for(var i=0;i<temp.length;i++){
                 for(var j=0;j<temp[i].length;j++){
-                    self.config.binaryMap[i][j]=temp[i][j];
+                    if(temp[i][j]){
+                        self.config.binaryMap[i][j]=temp[i][j];
+                        var ePoint = new Point(startX + (eWidth * trans - 5) * j, startY + (eHeight * trans - 5) * i),
+                            mark=temp[i][j],
+                            binaryPoint = new Point(j, i),
+                            alpha = 1,
+                            status = 0,
+                            element = new Element(ePoint, mark, binaryPoint,alpha,status);
+                        self.config.currentEMap[i][j]=element;
+                    }else{
+                        self.config.binaryMap[i][j]=0;
+                        self.config.currentEMap[i][j]=0;
+                    }
                 }
             }
 
@@ -857,14 +1032,80 @@ $.extend(Action.prototype, {
                 $(".mask").addClass("hide");
                 $(".start").addClass("start-right");
                 self.config.sound_ready.pause();
-                var bMap = self.config.binaryMap;//二进制地图
+                var bMap = self.config.currentEMap;//二进制地图
                 //经典模式地图初始化
                 self.initMap(ctx,bMap);
+                setTimeout(function(){
+                    self.config.initMapTimer=setInterval(function(){
+                        self.initMap(ctx,bMap);
+                    },50);
+                },1000);
                 var time=self.config.gameTime,
                     trans=self.config.rootSize;
                 self.drawTime(ctx,time,trans);
             },2000);
             //self.gameOver(10000);
+    },
+    //闪电模式添加n个新的元素
+    addNewElement:function(n){
+        if(n==0){
+            self.config.isLighting=true;
+            return;
+        }
+        var self=this;
+        var startX = self.config.elementStart.x,
+            startY = self.config.elementStart.y,
+            eHeight = self.config.elementHeight,
+            eWidth = self.config.elementWidth,
+            trans = self.config.rootSize;
+        var temp=self.config.binaryMap,
+            map=[];
+        ////当前地图有可插入位置存入map中
+        for(var i=0;i<temp.length;i++){
+            for(var j =0 ;j<temp[i].length;j++){
+                if(!temp[i][j]){
+                    var point=new Point(i,j);
+                    map.push(point);
+                }
+            }
+        }
+        //没有可插入的位置
+        if(!map.length){
+            return;
+        }
+        var p1=0,p2=p1;//随机生成map中的两个位置
+        while(p1==p2||p1>=map.length||p2>=map.length){
+            p1=Math.floor(Math.random()*map.length);
+            p2=Math.floor(Math.random()*map.length);
+        }
+        var x1=map[p1].x,//两个binaryMap中的位置
+            y1=map[p1].y,
+            x2=map[p2].x,
+            y2=map[p2].y;
+        if(!temp[x1][y1]&&!temp[x2][y2]){//当前地图有可插入位置
+            //在当前地图中插入两个元素
+            var m=Math.floor(1+Math.random()*14);//mark随机
+                var ePoint = new Point(startX + (eWidth * trans - 5) * y1, startY + (eHeight * trans - 5) * x1),
+                            mark=m,
+                            binaryPoint = new Point(y1, x1),
+                            alpha = 0,//透明度默认为0
+                            status = 0,//默认状态为0
+                            element = new Element(ePoint, mark, binaryPoint,alpha,status);
+                self.config.currentEMap[x1][y1]=element;
+                var ePoint = new Point(startX + (eWidth * trans - 5) * y2, startY + (eHeight * trans - 5) * x2),
+                            mark=m,
+                            binaryPoint = new Point(y2, x2),
+                            alpha = 0,
+                            status = 0,
+                            element = new Element(ePoint, mark, binaryPoint,alpha,status);
+                self.config.currentEMap[x2][y2]=element;
+            self.config.binaryMap[x1][y1]=10;
+            self.config.binaryMap[x2][y2]=10;
+            //self.config.lightingMaps.push(obj1);
+            self.addNewElement(n-1);
+        }else{
+            self.addNewElement(n);
+        }
     },
     //页面加载
     pageLoad: function(){
@@ -933,46 +1174,3 @@ $.extend(Action.prototype, {
 new Action().init();
 
 
-
-/*
-pageLoad: function(){
-        var self = this;
-        function Load(){}
-        Load.prototype.loadImgs = function(urls,callback) {
-            this.urls = urls;
-            this.imgNumbers = urls.length;
-            this.loadImgNumbers = 0;
-            var that =this;
-            for(var i=0;i<urls.length;i++){
-                var obj = new Image();
-                obj.src = urls[i];
-                obj.onload = function(){
-                    that.loadImgNumbers++;
-                    callback(parseInt((that.loadImgNumbers/that.imgNumbers)*100));
-                }
-            }
-        };
-        var loader = new Load();
-        loader.loadImgs([self.config.boomPic.src,'../../../site/img/event/8bit/load.png','../../../site/img/event/8bit/result.png','../../../site/img/event/8bit/guide.png','../../../site/img/event/8bit/guideCloud1.png','../../../site/img/event/8bit/guideCloud2.png','../../../site/img/event/8bit/guideStar.png','../../../site/img/event/8bit/rule.jpg','../../../site/img/event/8bit/start.png',self.config.bg.src,self.config.bullet.src,self.config.dead.src,self.config.clock.src,self.config.guard.src,self.config.plane.src,self.config.redBag.src,self.config.lighting.src,self.config.star.src,'../../../site/img/event/8bit/halo.png','../../../site/img/event/8bit/double.png','../../../site/img/event/8bit/cloud.png'],function(percent){
-            $(".load-word").empty().html(percent+"%");
-            if(percent==100) {
-                $('.load').removeClass('loadani').addClass('loadend');
-                $('.mask-up').addClass('maskupani');
-                $('.mask-down').addClass('maskdownani');
-                $('.load-word').addClass('hide');
-                // canvas初始化
-                var canvas = document.getElementById('stage');
-                var ctx = canvas.getContext('2d');
-                ctx.drawImage(self.config.bg, 0, 0, self.config.bgWidth, self.config.bgHeight);
-                self.initListener(ctx);
-                self.run(ctx);
-                setTimeout(function(){
-                    $('.load').removeClass('loadend').addClass('hide');
-                    $('.mask-up').removeClass('maskupani').addClass('hide');
-                    $('.mask-down').removeClass('maskdownani').addClass('hide');
-                    $('.plane').removeClass('hide')
-                }, 1400);
-            };
-        });
-    },
-*/
