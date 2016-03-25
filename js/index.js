@@ -786,7 +786,6 @@ $.extend(Action.prototype, {
             boom = self.config.boom,
             combo = self.config.combo,
             trans = self.config.rootSize;
-
         $($(".boom")[0]).css({
             "top": +lastPoint.y + "px",
             "left": +lastPoint.x + "px"
@@ -1108,8 +1107,10 @@ $.extend(Action.prototype, {
                 status = 0,
                 element = new Element(ePoint, mark, binaryPoint, alpha, status);
             self.config.currentEMap[x2][y2] = element;
-            self.config.binaryMap[x1][y1] = 10;
-            self.config.binaryMap[x2][y2] = 10;
+            setTimeout(function(){
+                self.config.binaryMap[x1][y1] = 10;
+                self.config.binaryMap[x2][y2] = 10;
+            },1000)
             //self.config.lightingMaps.push(obj1);
             self.addNewElement(n - 1);
         } else {
@@ -1150,7 +1151,7 @@ $.extend(Action.prototype, {
                 var and = u.indexOf('Android') > -1 || u.indexOf('Linux') > -1;
                 if (and) {
                     //console.log("Android");
-                    alert("哈哈哈！");
+                    //alert("哈哈哈！");
                     setTimeout(function() {
                         $(".loading").addClass("hide");
                         $(".home-page").removeClass("hide");
